@@ -94,6 +94,10 @@ namespace ProtocolSingularity.Networking
             if (Runner != null)
             {
                 await Shutdown();
+                // WebGL: Photon NameServer の WebSocket が Shutdown 直後に再接続しようとすると
+                // 'WebSocket is closed before the connection is established' で弾かれる。
+                // サーバ側が FIN を処理する余裕を与えるため少し待つ。
+                await System.Threading.Tasks.Task.Delay(750);
             }
             EnsureRunner();
             IsInLobbyOnly = false;
@@ -124,7 +128,21 @@ namespace ProtocolSingularity.Networking
             var r = Runner;
             Runner = null;
             IsInLobbyOnly = false;
-            await r.Shutdown();
+            // WebGL の WebSocket が CLOSED にならずハングすることがあるため Shutdown に 3 秒タイムアウトを設ける。
+            // タイムアウト後も下の DestroyImmediate で Runner コンポーネントは強制除去される。
+            try
+            {
+                var shutdownTask = r.Shutdown();
+                var completed = await System.Threading.Tasks.Task.WhenAny(shutdownTask, System.Threading.Tasks.Task.Delay(3000));
+                if (completed != shutdownTask)
+                {
+                    UnityEngine.Debug.LogWarning("[FusionSessionManager] Runner.Shutdown() timed out after 3s; forcing destroy.");
+                }
+            }
+            catch (System.Exception e)
+            {
+                UnityEngine.Debug.LogWarning($"[FusionSessionManager] Runner.Shutdown threw: {e.Message}");
+            }
             // NetworkRunner コンポーネントを即座に除去。遅延させると AddComponent が重複エラーになる
             if (r != null) DestroyImmediate(r);
         }

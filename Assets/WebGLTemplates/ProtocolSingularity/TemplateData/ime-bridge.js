@@ -1,82 +1,115 @@
-// Protocol Singularity — WebGL IME bridge (v2).
+// Protocol Singularity — WebGL IME bridge (v3: HTML input overlay).
 //
-// <canvas> 要素は DOM のテキスト入力イベント (compositionstart / compositionend) を
-// 受け取れないため、Unity の UI Toolkit TextField にフォーカスが当たった瞬間に
-// 隠し <textarea> へ DOM フォーカスを流して IME 入力を捕まえる。
-// IME 確定文字列は unityInstance.SendMessage("ImeBridge", "ReceiveImeText", text) で
-// Unity 側へ渡す (ImeBridge.cs 受信)。
+// <canvas> は DOM の IME / 日本語入力を受け取れないため、画面下部に常時表示される
+// HTML <input> を用意し、そこで入力された文字を Unity へ都度転送する。
+// Unity 側 (UI Toolkit TextField) はそのまま文字列をミラー表示する想定。
 //
-// 有効化は C# 側の ImeBridge.jslib 経由で以下のいずれかを呼ぶ:
-//   - window.__imeBridgeEnable()  : UI Toolkit TextField focus in で呼ぶ
-//   - window.__imeBridgeDisable() : UI Toolkit TextField focus out で呼ぶ
+// C# から呼ばれる window.__imeBridge* API:
+//   Show / Hide     : overlay の表示切替 (フォーカスも伴う)
+//   SetValue(s)     : overlay の value を外部から置き換え (送信後クリア等)
+//   Insert(s)       : キャレット位置に文字列を挿入 + フォーカス (mention chip から)
+//   Attach(inst)    : createUnityInstance 完了後に呼ぶ
 
 (function () {
-  var bridge = document.getElementById("ime-bridge");
-  var canvas = document.getElementById("unity-canvas");
-  if (!bridge || !canvas) return;
-
   var unityInstance = null;
-  var targetObject = "ImeBridge";
-  var targetMethod = "ReceiveImeText";
-  var submitMethod = "ReceiveImeSubmit";
-  var composing = false;
+  var target = "ImeBridge";
+  var methodText = "ReceiveImeText";       // value 全体を送る (replace semantics)
+  var methodSubmit = "ReceiveImeSubmit";   // Enter で呼ばれる
+  var inputEl = null;
 
-  function send(text) {
-    if (!unityInstance || !text) return;
-    try { unityInstance.SendMessage(targetObject, targetMethod, text); } catch (e) {}
-  }
-
-  function sendSubmit() {
+  function send(method, payload) {
     if (!unityInstance) return;
-    try { unityInstance.SendMessage(targetObject, submitMethod, ""); } catch (e) {}
+    try { unityInstance.SendMessage(target, method, payload); } catch (e) {}
   }
 
-  bridge.addEventListener("compositionstart", function () {
-    composing = true;
-  });
+  function ensureInput() {
+    if (inputEl) return inputEl;
+    inputEl = document.createElement("input");
+    inputEl.type = "text";
+    inputEl.id = "ime-overlay-input";
+    inputEl.maxLength = 120;
+    inputEl.autocomplete = "off";
+    inputEl.autocapitalize = "off";
+    inputEl.spellcheck = false;
+    inputEl.placeholder = "ここにメッセージを入力... (Enter で送信)";
 
-  bridge.addEventListener("compositionend", function (e) {
-    composing = false;
-    var text = e.data || bridge.value;
-    bridge.value = "";
-    if (text) send(text);
-  });
+    // Unity chat-input に合わせたターミナル風スタイル。
+    var s = inputEl.style;
+    s.position = "fixed";
+    s.right = "68px";           // terminal-root padding 56 + chat-panel margin
+    s.bottom = "72px";          // status-line の上
+    s.width = "600px";
+    s.height = "40px";
+    s.padding = "6px 12px";
+    s.backgroundColor = "#141C14";
+    s.color = "#C8E6C8";
+    s.border = "1px solid #3CC878";
+    s.borderRadius = "0";
+    s.fontFamily = '"Consolas","Menlo","Courier New",monospace';
+    s.fontSize = "16px";
+    s.letterSpacing = "0";
+    s.outline = "none";
+    s.zIndex = "1000";
+    s.display = "none";
 
-  // 直接入力 (半角) も拾う
-  bridge.addEventListener("input", function () {
-    if (composing) return;
-    var text = bridge.value;
-    bridge.value = "";
-    if (text) send(text);
-  });
+    // 入力のたび Unity へ全体 value を送る。
+    inputEl.addEventListener("input", function () {
+      send(methodText, inputEl.value);
+    });
 
-  // Enter キーで送信トリガー (JP 入力の確定 Enter とは別。変換中は compositionend のみ発火)
-  bridge.addEventListener("keydown", function (e) {
-    if (composing || e.isComposing) return;
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendSubmit();
-    }
-  });
+    // Enter で送信。変換中 (composition) は無視。
+    inputEl.addEventListener("keydown", function (e) {
+      if (e.isComposing) return;
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        send(methodSubmit, "");
+      }
+    });
 
-  bridge.addEventListener("blur", function () {
-    composing = false;
-  });
+    inputEl.addEventListener("focus", function () {
+      s.borderColor = "#50FFAA";
+    });
+    inputEl.addEventListener("blur", function () {
+      s.borderColor = "#3CC878";
+    });
 
-  // C# 側からの指示を受けて textarea にフォーカスを移す (= IME 受付開始)
-  window.__imeBridgeEnable = function () {
-    bridge.style.pointerEvents = "auto";
-    try { bridge.focus({ preventScroll: true }); } catch (e) { bridge.focus(); }
-  };
+    document.body.appendChild(inputEl);
+    return inputEl;
+  }
 
-  // 逆に canvas にフォーカスを戻す (= IME 受付終了)
-  window.__imeBridgeDisable = function () {
-    bridge.blur();
-    try { canvas.focus({ preventScroll: true }); } catch (e) { canvas.focus(); }
-  };
-
-  // createUnityInstance 完了後に呼ばれる
   window.__imeBridgeAttach = function (instance) {
     unityInstance = instance;
+    // 接続確立直後に overlay を出現させる (ゲーム内で常に入力できる)。
+    ensureInput().style.display = "block";
   };
+
+  window.__imeBridgeShow = function () {
+    var el = ensureInput();
+    el.style.display = "block";
+    try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); }
+  };
+
+  window.__imeBridgeHide = function () {
+    if (inputEl) inputEl.style.display = "none";
+  };
+
+  window.__imeBridgeSetValue = function (v) {
+    var el = ensureInput();
+    el.value = v || "";
+  };
+
+  window.__imeBridgeInsert = function (v) {
+    var el = ensureInput();
+    if (!v) return;
+    var pos = el.selectionStart !== null && el.selectionStart !== undefined ? el.selectionStart : el.value.length;
+    var before = el.value.substring(0, pos);
+    var after = el.value.substring(pos);
+    el.value = before + v + after;
+    var newPos = pos + v.length;
+    try { el.setSelectionRange(newPos, newPos); } catch (e) {}
+    try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); }
+    send(methodText, el.value);
+  };
+
+  window.__imeBridgeIsAvailable = function () { return true; };
 })();

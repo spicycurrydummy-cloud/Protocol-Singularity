@@ -14,7 +14,7 @@
         <ui:VisualElement class="section-columns title-body">
             <!-- Left: operator handle + create new session -->
             <ui:VisualElement class="terminal-panel column title-left-col">
-                <ui:Label text="&gt; オペレーター名" class="label label-accent" />
+                <ui:Label text="&gt;&gt; オペレーター名" class="label label-accent" />
                 <ui:TextField name="name-input" max-length="16" class="input" />
                 <ui:Label text="未入力の場合 OPERATOR_XXX が自動採番されます (最大16文字)" class="label label-dim" />
 

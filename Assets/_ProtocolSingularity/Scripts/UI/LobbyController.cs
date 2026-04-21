@@ -173,7 +173,7 @@ namespace ProtocolSingularity.UI
 
             InitChatComposer();
             EnsureImeBridge();
-            ImeBridge.TextReceived += OnImeTextReceived;
+            ImeBridge.TextChanged += OnImeTextChanged;
             ImeBridge.Submitted += OnImeSubmitted;
 
             UpdateSessionCode();
@@ -212,7 +212,7 @@ namespace ProtocolSingularity.UI
             GameStateManager.LocalRoleReceived -= OnLocalRoleReceived;
             ChatManager.Changed -= OnChatChanged;
             GameLog.Changed -= OnGameLogChanged;
-            ImeBridge.TextReceived -= OnImeTextReceived;
+            ImeBridge.TextChanged -= OnImeTextChanged;
             ImeBridge.Submitted -= OnImeSubmitted;
         }
 
@@ -224,18 +224,18 @@ namespace ProtocolSingularity.UI
             go.AddComponent<ImeBridge>();
         }
 
-        /// <summary>WebGL 側 JS (ime-bridge.js) から届いた IME 確定文字列を chat-input に追記。</summary>
-        private void OnImeTextReceived(string text)
+        /// <summary>WebGL HTML overlay の入力値が変化したら Unity chat-input にミラーする。</summary>
+        private void OnImeTextChanged(string text)
         {
-            if (_chatInput == null || string.IsNullOrEmpty(text)) return;
-            var cur = _chatInput.value ?? string.Empty;
-            _chatInput.value = cur + text;
+            if (_chatInput == null) return;
+            _chatInput.SetValueWithoutNotify(text ?? string.Empty);
         }
 
-        /// <summary>JS 側 Enter キー → chat 送信をトリガー。</summary>
+        /// <summary>JS 側 Enter キー → chat 送信。送信後 overlay もクリアする。</summary>
         private void OnImeSubmitted()
         {
             OnChatSendClicked();
+            ImeBridge.SetValue(string.Empty);
         }
 
         private void QueryElements(VisualElement root)
@@ -354,8 +354,6 @@ namespace ProtocolSingularity.UI
             if (_chatInput != null)
             {
                 _chatInput.RegisterCallback<KeyDownEvent>(OnChatInputKeyDown);
-                _chatInput.RegisterCallback<FocusInEvent>(_ => ImeBridge.EnableInput());
-                _chatInput.RegisterCallback<FocusOutEvent>(_ => ImeBridge.DisableInput());
             }
             if (_gameendReturnBtn != null) _gameendReturnBtn.clicked += OnGameEndReturnClicked;
             if (_menuBtn != null) _menuBtn.clicked += OpenMenu;
@@ -456,12 +454,12 @@ namespace ProtocolSingularity.UI
             bool isError;
             if (opCount < 0)
             {
-                summaryText = $"! AI 役職が多すぎて枠に入りません ({-opCount} 人オーバー)。オフにしてください";
+                summaryText = "! AI 役職が多すぎます。\nAI 陣営は人類陣営より少なくしてください。";
                 isError = true;
             }
             else if (unwinnable)
             {
-                summaryText = $"! AI 陣営が多すぎます (人類 {human} : AI {ai})。AI 役職を減らしてください (人類 > AI が必須)";
+                summaryText = "! AI 役職が多すぎます。\nAI 陣営は人類陣営より少なくしてください。";
                 isError = true;
             }
             else
@@ -1601,9 +1599,22 @@ namespace ProtocolSingularity.UI
         // ==========================================================
         private void InitChatComposer()
         {
-            if (_chatInput != null) _chatInput.SetValueWithoutNotify(string.Empty);
+            if (_chatInput != null)
+            {
+                _chatInput.SetValueWithoutNotify(string.Empty);
+                // WebGL では IME が動かないため HTML overlay (ImeBridge) に実入力を委ねる。
+                // Unity 側の chat-input は表示 (ミラー) のみの役割にする。
+                if (ImeBridge.IsAvailable)
+                {
+                    _chatInput.isReadOnly = true;
+                    _chatInput.tooltip = "画面下部の入力欄に入力してください";
+                    _chatInput.SetEnabled(false);
+                }
+            }
             RefreshChatTargets();
             RefreshChatLog();
+            // WebGL ビルド時は overlay 自体は JS 側で attach 時に自動表示されるが、念のため Show を呼ぶ。
+            if (ImeBridge.IsAvailable) ImeBridge.Show();
         }
 
         private void RefreshChatTargets()
@@ -1626,11 +1637,21 @@ namespace ProtocolSingularity.UI
 
         private void InsertMention(string name)
         {
+            // WebGL は HTML overlay 側にキャレット位置で挿入してフォーカスを戻す。
+            if (ImeBridge.IsAvailable)
+            {
+                var cur = _chatInput?.value ?? string.Empty;
+                var sep = (cur.Length == 0 || cur.EndsWith(" ")) ? string.Empty : " ";
+                ImeBridge.Insert(sep + "@" + name + " ");
+                return;
+            }
             if (_chatInput == null) return;
-            var cur = _chatInput.value ?? string.Empty;
-            var sep = (cur.Length == 0 || cur.EndsWith(" ")) ? string.Empty : " ";
-            _chatInput.value = cur + sep + "@" + name + " ";
-            _chatInput.Focus();
+            {
+                var cur = _chatInput.value ?? string.Empty;
+                var sep = (cur.Length == 0 || cur.EndsWith(" ")) ? string.Empty : " ";
+                _chatInput.value = cur + sep + "@" + name + " ";
+                _chatInput.Focus();
+            }
         }
 
         private void OnChatInputKeyDown(KeyDownEvent evt)
@@ -1655,6 +1676,8 @@ namespace ProtocolSingularity.UI
             if (msg.Length > 60) msg = msg.Substring(0, 60);
             ChatManager.Instance.Rpc_SendThought(_sm.Runner.LocalPlayer, msg);
             _chatInput.SetValueWithoutNotify(string.Empty);
+            // HTML overlay 側もクリアする (WebGL のみ実効、それ以外は no-op)
+            ImeBridge.SetValue(string.Empty);
         }
 
         private void OnChatChanged()
