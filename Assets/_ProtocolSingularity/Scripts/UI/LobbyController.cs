@@ -168,6 +168,8 @@ namespace ProtocolSingularity.UI
             GameLog.Changed += OnGameLogChanged;
 
             InitChatComposer();
+            EnsureImeBridge();
+            ImeBridge.TextReceived += OnImeTextReceived;
 
             UpdateSessionCode();
             ApplyHostVisibility();
@@ -203,6 +205,29 @@ namespace ProtocolSingularity.UI
             GameStateManager.LocalRoleReceived -= OnLocalRoleReceived;
             ChatManager.Changed -= OnChatChanged;
             GameLog.Changed -= OnGameLogChanged;
+            ImeBridge.TextReceived -= OnImeTextReceived;
+        }
+
+        /// <summary>ImeBridge が存在しなければ生成する (WebGL で JS から SendMessage できるよう)。</summary>
+        private static void EnsureImeBridge()
+        {
+            if (ImeBridge.Instance != null) return;
+            var go = new GameObject("ImeBridge");
+            go.AddComponent<ImeBridge>();
+        }
+
+        /// <summary>WebGL 側 JS (ime-bridge.js) から届いた IME 確定文字列を chat-input に追記。</summary>
+        private void OnImeTextReceived(string text)
+        {
+            if (_chatInput == null || string.IsNullOrEmpty(text)) return;
+            // chat-input がフォーカスを持っているときのみ追記 (他の入力欄に影響を与えない)
+            if (_chatInput.focusController == null || _chatInput.focusController.focusedElement != _chatInput)
+            {
+                // フォーカス無しでも chat-input に入れたい場合はフォーカスを戻して追記
+                _chatInput.Focus();
+            }
+            var cur = _chatInput.value ?? string.Empty;
+            _chatInput.value = cur + text;
         }
 
         private void QueryElements(VisualElement root)

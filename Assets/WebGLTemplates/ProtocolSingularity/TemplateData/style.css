@@ -1,0 +1,102 @@
+/* Protocol Singularity — WebGL host page theme.
+   Terminal-style palette matching the in-game UI (dark green / accent cyan-green). */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #080C08;
+  color: #C8E6C8;
+  font-family: "Consolas", "Menlo", "Courier New", monospace;
+  overflow: hidden;
+}
+
+#unity-container {
+  position: fixed;
+  inset: 0;
+  background-color: #080C08;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#unity-canvas {
+  width: 100%;
+  height: 100%;
+  background-color: #080C08;
+  outline: none;
+}
+
+/* Loading bar */
+#unity-loading-bar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  pointer-events: none;
+}
+
+#unity-loading-title {
+  color: #50FFAA;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  -webkit-font-smoothing: none;
+}
+
+#unity-progress-bar-empty {
+  width: 260px;
+  height: 6px;
+  background-color: #0E140E;
+  border: 1px solid #3C8058;
+}
+
+#unity-progress-bar-full {
+  width: 0;
+  height: 100%;
+  background-color: #50FFAA;
+  transition: width 0.15s linear;
+}
+
+/* Warning / error banners */
+#unity-warning {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  z-index: 100;
+  font-family: monospace;
+}
+
+#unity-warning .banner-error {
+  background-color: #5A1414;
+  color: #FFD0D0;
+  padding: 10px 16px;
+  border: 1px solid #FF4040;
+}
+
+#unity-warning .banner-warning {
+  background-color: #4A3A10;
+  color: #FFE8A0;
+  padding: 10px 16px;
+  border: 1px solid #FFD84D;
+}
+
+/* Hidden IME bridge textarea — positioned off-screen but focusable. */
+#ime-bridge {
+  position: fixed;
+  left: -2000px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  pointer-events: none;
+}
