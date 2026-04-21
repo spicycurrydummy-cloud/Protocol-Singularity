@@ -223,6 +223,17 @@ namespace ProtocolSingularity.Networking
         public void HostAwakenDrone()
         {
             if (!HasStateAuthority) return;
+            // Drone 役が配役されていない試合では awaken は不要 (ログも出さない)
+            bool hasDrone = false;
+            foreach (var r in _assignedRoles.Values)
+            {
+                if (r == RoleType.Drone) { hasDrone = true; break; }
+            }
+            if (!hasDrone)
+            {
+                _droneAwakened = true; // 再呼出しを抑止するためフラグだけ立てる
+                return;
+            }
             _droneAwakened = true;
             foreach (var p in _assignedRoles.Keys)
             {
