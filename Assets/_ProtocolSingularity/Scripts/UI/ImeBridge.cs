@@ -41,12 +41,14 @@ namespace ProtocolSingularity.UI
 #if UNITY_WEBGL && !UNITY_EDITOR
         [DllImport("__Internal")] private static extern void ImeBridge_Show();
         [DllImport("__Internal")] private static extern void ImeBridge_Hide();
+        [DllImport("__Internal")] private static extern void ImeBridge_Place(float nx, float ny, float nw, float nh, float fontPx);
         [DllImport("__Internal")] private static extern void ImeBridge_SetValue(string value);
         [DllImport("__Internal")] private static extern void ImeBridge_Insert(string value);
         [DllImport("__Internal")] private static extern int ImeBridge_IsAvailable();
 #else
         private static void ImeBridge_Show() { }
         private static void ImeBridge_Hide() { }
+        private static void ImeBridge_Place(float _a, float _b, float _c, float _d, float _e) { }
         private static void ImeBridge_SetValue(string _) { }
         private static void ImeBridge_Insert(string _) { }
         private static int ImeBridge_IsAvailable() => 0;
@@ -83,6 +85,24 @@ namespace ProtocolSingularity.UI
         public static void Hide() => ImeBridge_Hide();
         public static void SetValue(string value) => ImeBridge_SetValue(value ?? string.Empty);
         public static void Insert(string value) => ImeBridge_Insert(value ?? string.Empty);
+
+        /// <summary>
+        /// フォーカス中の TextField の真上に HTML overlay を重ねる。
+        /// 正規化 (0..1) された field の rect と対象 panel の rect を渡せば
+        /// canvas サイズに対する位置を自動計算する。fontPx は panel 座標系の値で、
+        /// JS 側で canvas CSS サイズに合わせて再スケールされる (0 で無視)。
+        /// </summary>
+        public static void PlaceOverField(UnityEngine.Rect fieldWorld, UnityEngine.Rect panelWorld, float fontPx = 0f)
+        {
+            if (panelWorld.width <= 0f || panelWorld.height <= 0f) return;
+            float nx = fieldWorld.x / panelWorld.width;
+            float ny = fieldWorld.y / panelWorld.height;
+            float nw = fieldWorld.width / panelWorld.width;
+            float nh = fieldWorld.height / panelWorld.height;
+            // font size も panel 高さに対する比率として送る (JS 側で canvas 高さに乗算)
+            float fontRatio = fontPx > 0f ? (fontPx / panelWorld.height) : 0f;
+            ImeBridge_Place(nx, ny, nw, nh, fontRatio);
+        }
 
         public static bool IsAvailable =>
 #if UNITY_WEBGL && !UNITY_EDITOR

@@ -216,6 +216,8 @@ namespace ProtocolSingularity.UI
             GameLog.Changed -= OnGameLogChanged;
             ImeBridge.TextChanged -= OnImeTextChanged;
             ImeBridge.Submitted -= OnImeSubmitted;
+            ImeBridge.BindActive(null, null);
+            ImeBridge.Hide();
         }
 
         /// <summary>ImeBridge が存在しなければ生成する (WebGL で JS から SendMessage できるよう)。</summary>
@@ -1648,18 +1650,28 @@ namespace ProtocolSingularity.UI
             {
                 _chatInput.SetValueWithoutNotify(string.Empty);
                 // WebGL では IME が動かないため HTML overlay (ImeBridge) に実入力を委ねる。
-                // Unity 側の chat-input は表示 (ミラー) のみの役割にする。
+                // Unity 側の chat-input は値のミラー表示のみ。overlay はフォーカス時に真上へ配置する。
                 if (ImeBridge.IsAvailable)
                 {
                     _chatInput.isReadOnly = true;
-                    _chatInput.tooltip = "画面下部の入力欄に入力してください";
-                    _chatInput.SetEnabled(false);
+                    // SetEnabled(false) だと PointerDown/FocusIn が届かないため有効のまま readonly にする
+                    _chatInput.RegisterCallback<PointerDownEvent>(_ => PlaceOverlayOnChat());
+                    _chatInput.RegisterCallback<FocusInEvent>(_ => PlaceOverlayOnChat());
                 }
             }
             RefreshChatTargets();
             RefreshChatLog();
-            // WebGL ビルド時は overlay 自体は JS 側で attach 時に自動表示されるが、念のため Show を呼ぶ。
-            if (ImeBridge.IsAvailable) ImeBridge.Show();
+        }
+
+        private void PlaceOverlayOnChat()
+        {
+            if (_chatInput == null || _chatInput.panel == null) return;
+            var panelRect = _chatInput.panel.visualTree.worldBound;
+            var fieldRect = _chatInput.worldBound;
+            float fontPx = _chatInput.resolvedStyle.fontSize;
+            ImeBridge.SetValue(_chatInput.value);
+            ImeBridge.BindActive(v => _chatInput.SetValueWithoutNotify(v), null);
+            ImeBridge.PlaceOverField(fieldRect, panelRect, fontPx);
         }
 
         private void RefreshChatTargets()
@@ -1685,6 +1697,9 @@ namespace ProtocolSingularity.UI
             // WebGL は HTML overlay 側にキャレット位置で挿入してフォーカスを戻す。
             if (ImeBridge.IsAvailable)
             {
+                // mention ボタンクリックで chat-input はフォーカスを失っている可能性があるため、
+                // まず overlay を chat-input の真上へ再配置してから Insert する。
+                PlaceOverlayOnChat();
                 var cur = _chatInput?.value ?? string.Empty;
                 var sep = (cur.Length == 0 || cur.EndsWith(" ")) ? string.Empty : " ";
                 ImeBridge.Insert(sep + "@" + name + " ");

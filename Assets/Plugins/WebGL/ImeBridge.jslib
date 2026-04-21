@@ -8,6 +8,10 @@ mergeInto(LibraryManager.library, {
     if (typeof window.__imeBridgeShow === "function") window.__imeBridgeShow();
   },
 
+  ImeBridge_Place: function(nx, ny, nw, nh, fontPx) {
+    if (typeof window.__imeBridgePlace === "function") window.__imeBridgePlace(nx, ny, nw, nh, fontPx);
+  },
+
   ImeBridge_Hide: function() {
     if (typeof window.__imeBridgeHide === "function") window.__imeBridgeHide();
   },

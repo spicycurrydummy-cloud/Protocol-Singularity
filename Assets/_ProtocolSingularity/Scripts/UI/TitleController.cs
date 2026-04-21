@@ -77,16 +77,11 @@ namespace ProtocolSingularity.UI
             if (_codeInput != null) _codeInput.SetValueWithoutNotify(string.Empty);
 
             // WebGL では UI Toolkit TextField が IME / 日本語入力を取りこぼすため、
-            // 画面下部の HTML overlay 経由でフォーカス中フィールドへ値を流す。
+            // HTML overlay をフォーカス中 TextField の真上に重ねて置き換わったように見せる。
             if (ImeBridge.IsAvailable)
             {
                 WireImeField(_nameInput);
                 WireImeField(_codeInput);
-                // 初期ターゲットは name-input (クリック前でも入力可能)
-                ImeBridge.SetValue(string.Empty);
-                if (_nameInput != null)
-                    ImeBridge.BindActive(v => _nameInput.SetValueWithoutNotify(v), null);
-                ImeBridge.Show();
             }
 
             SetStatus("> READY.");
@@ -108,23 +103,31 @@ namespace ProtocolSingularity.UI
             if (FusionSessionManager.Instance != null)
                 FusionSessionManager.Instance.SessionListUpdated -= OnSessionListUpdated;
             ImeBridge.BindActive(null, null);
+            ImeBridge.Hide();
         }
 
         /// <summary>
-        /// UI Toolkit TextField にフォーカスが入ったら HTML overlay の値をミラー → 入力を受信するよう Bind。
-        /// WebGL 以外では no-op (ImeBridge.IsAvailable が false で呼ばれないため)。
+        /// UI Toolkit TextField にフォーカスが入ったら HTML overlay をその真上に重ね、
+        /// value をミラーしてから Bind する。WebGL 以外では no-op。
         /// </summary>
         private void WireImeField(TextField field)
         {
             if (field == null) return;
             field.isReadOnly = true;
-            field.tooltip = "画面下部の入力欄に入力してください";
-            field.RegisterCallback<FocusInEvent>(_ =>
-            {
-                ImeBridge.SetValue(field.value);
-                ImeBridge.BindActive(v => field.SetValueWithoutNotify(v), null);
-                ImeBridge.Show();
-            });
+            // ポインタダウンで即 overlay 配置 (FocusInEvent だと挙動が遅れるケースあり)
+            field.RegisterCallback<PointerDownEvent>(_ => PlaceOverlayOn(field));
+            field.RegisterCallback<FocusInEvent>(_ => PlaceOverlayOn(field));
+        }
+
+        private static void PlaceOverlayOn(TextField field)
+        {
+            if (field == null || field.panel == null) return;
+            var panelRect = field.panel.visualTree.worldBound;
+            var fieldRect = field.worldBound;
+            float fontPx = field.resolvedStyle.fontSize;
+            ImeBridge.SetValue(field.value);
+            ImeBridge.BindActive(v => field.SetValueWithoutNotify(v), null);
+            ImeBridge.PlaceOverField(fieldRect, panelRect, fontPx);
         }
 
         private void OpenRules()
