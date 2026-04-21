@@ -19,12 +19,13 @@
 /* .prompt-btn-small is now defined in Shared/Terminal.uss */
 
 .refresh-btn {
-    min-width: 48px;
+    min-width: 80px;
     min-height: 36px;
-    padding: 0 10px;
-    font-size: 18px;
+    padding: 0 12px;
+    font-size: 14px;
     -unity-font-style: bold;
     -unity-text-align: middle-center;
+    letter-spacing: 2px;
 }
 
 .session-list {

@@ -240,7 +240,7 @@ namespace ProtocolSingularity.UI
                 {
                     _sessionListEmpty.text = FusionSessionManager.Instance != null && FusionSessionManager.Instance.IsInLobbyOnly
                         ? "> No active sessions found."
-                        : "> Press [ ↻ ] to scan the session list.";
+                        : "> Press [ SCAN ] to scan the session list.";
                 }
                 else
                 {

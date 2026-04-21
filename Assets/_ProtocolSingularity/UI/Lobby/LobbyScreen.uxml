@@ -13,7 +13,7 @@
                     <ui:Toggle name="lock-toggle" text="Lock session (hide from public list)" value="false" class="lobby-toggle lock-toggle-inline" />
                 </ui:VisualElement>
             </ui:VisualElement>
-            <ui:Button name="menu-btn" text="⚙" class="menu-btn" tooltip="Menu" />
+            <ui:Button name="menu-btn" text="MENU" class="menu-btn" tooltip="Menu" />
         </ui:VisualElement>
 
         <ui:VisualElement name="main-split" class="main-split">

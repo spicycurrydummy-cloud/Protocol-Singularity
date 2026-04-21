@@ -27,7 +27,7 @@
             <ui:VisualElement class="terminal-panel column title-right-col">
                 <ui:VisualElement class="session-list-header">
                     <ui:Label text="&gt;&gt; ACTIVE SESSIONS" class="label label-accent" />
-                    <ui:Button name="refresh-btn" text="[ ↻ ]" class="prompt-btn prompt-btn-small refresh-btn" tooltip="Refresh" />
+                    <ui:Button name="refresh-btn" text="[ SCAN ]" class="prompt-btn prompt-btn-small refresh-btn" tooltip="Refresh" />
                 </ui:VisualElement>
                 <ui:ScrollView name="session-list" class="session-list" />
                 <ui:Label name="session-list-empty" text="&gt; scanning..." class="label label-dim" />

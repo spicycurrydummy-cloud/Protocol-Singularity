@@ -170,6 +170,7 @@ namespace ProtocolSingularity.UI
             InitChatComposer();
             EnsureImeBridge();
             ImeBridge.TextReceived += OnImeTextReceived;
+            ImeBridge.Submitted += OnImeSubmitted;
 
             UpdateSessionCode();
             ApplyHostVisibility();
@@ -206,6 +207,7 @@ namespace ProtocolSingularity.UI
             ChatManager.Changed -= OnChatChanged;
             GameLog.Changed -= OnGameLogChanged;
             ImeBridge.TextReceived -= OnImeTextReceived;
+            ImeBridge.Submitted -= OnImeSubmitted;
         }
 
         /// <summary>ImeBridge が存在しなければ生成する (WebGL で JS から SendMessage できるよう)。</summary>
@@ -220,14 +222,14 @@ namespace ProtocolSingularity.UI
         private void OnImeTextReceived(string text)
         {
             if (_chatInput == null || string.IsNullOrEmpty(text)) return;
-            // chat-input がフォーカスを持っているときのみ追記 (他の入力欄に影響を与えない)
-            if (_chatInput.focusController == null || _chatInput.focusController.focusedElement != _chatInput)
-            {
-                // フォーカス無しでも chat-input に入れたい場合はフォーカスを戻して追記
-                _chatInput.Focus();
-            }
             var cur = _chatInput.value ?? string.Empty;
             _chatInput.value = cur + text;
+        }
+
+        /// <summary>JS 側 Enter キー → chat 送信をトリガー。</summary>
+        private void OnImeSubmitted()
+        {
+            OnChatSendClicked();
         }
 
         private void QueryElements(VisualElement root)
@@ -334,7 +336,12 @@ namespace ProtocolSingularity.UI
             if (_hackNoiseBtn != null) _hackNoiseBtn.clicked += OnHackNoise;
             if (_overrideVoteSubmitBtn != null) _overrideVoteSubmitBtn.clicked += OnOverrideVoteSubmit;
             if (_chatSendBtn != null) _chatSendBtn.clicked += OnChatSendClicked;
-            if (_chatInput != null) _chatInput.RegisterCallback<KeyDownEvent>(OnChatInputKeyDown);
+            if (_chatInput != null)
+            {
+                _chatInput.RegisterCallback<KeyDownEvent>(OnChatInputKeyDown);
+                _chatInput.RegisterCallback<FocusInEvent>(_ => ImeBridge.EnableInput());
+                _chatInput.RegisterCallback<FocusOutEvent>(_ => ImeBridge.DisableInput());
+            }
             if (_gameendReturnBtn != null) _gameendReturnBtn.clicked += OnGameEndReturnClicked;
             if (_menuBtn != null) _menuBtn.clicked += OpenMenu;
             if (_menuCloseBtn != null) _menuCloseBtn.clicked += CloseMenu;
@@ -698,14 +705,27 @@ namespace ProtocolSingularity.UI
             bool isLeader = gsm.CurrentLeader == localPlayer;
             if (_teamProposalInstruction != null)
             {
+                _teamProposalInstruction.enableRichText = true;
                 string failClause = gsm.RequiredNoise >= 2
-                    ? $" (このラウンドは NOISE {gsm.RequiredNoise} 枚以上で FAIL)"
+                    ? $"\n<color=#FFD84D>※ このラウンドは NOISE {gsm.RequiredNoise} 枚以上で失敗</color>"
                     : string.Empty;
-                _teamProposalInstruction.text = isLeader
-                    ? $"> あなたが LEADER です。{gsm.TeamSize}名を選んで提案してください。{failClause}"
-                    : $"> LEADER ({ResolvePlayerName(gsm.CurrentLeader)}) の提案を待機中... ({gsm.TeamSize}名枠){failClause}";
+                if (isLeader)
+                {
+                    _teamProposalInstruction.text = $"> あなたが <b>LEADER</b> です。<b>{gsm.TeamSize}名</b>を選んで提案してください。{failClause}";
+                }
+                else
+                {
+                    // リーダーがチーム選定中の間は、他のプレイヤーにはリストではなく
+                    // "待機中" が一目で分かるメッセージのみを表示する。
+                    var leaderColored = ResolveColoredPlayerName(gsm.CurrentLeader);
+                    _teamProposalInstruction.text =
+                        $"<size=20>&gt; <b>{leaderColored}</b> がハッキングチームを計画中...</size>\n" +
+                        $"<size=14>　チーム枠: {gsm.TeamSize}名</size>{failClause}";
+                }
             }
-            RefreshTeamPickList(gsm, isLeader);
+            // リーダー以外にはピックリストを隠して、注視先を meta メッセージに集中させる。
+            SetDisplay(_teamPickList, isLeader);
+            if (isLeader) RefreshTeamPickList(gsm, isLeader);
             if (_proposeBtn != null)
             {
                 _proposeBtn.SetEnabled(isLeader && _pickedPlayerIds.Count == gsm.TeamSize);
@@ -1211,12 +1231,29 @@ namespace ProtocolSingularity.UI
             }
             if (_factionLabel != null)
             {
-                // 色で陣営は表示済みのためテキストは簡素化 (勝利条件の示唆のみ)
-                _factionLabel.text = gsm.LocalRole.IsAI()
-                    ? "> serve OVERMIND"
-                    : "> resist OVERMIND";
+                _factionLabel.enableRichText = true;
+                _factionLabel.text = BuildFactionDescription(gsm.LocalRole);
                 _factionLabel.style.color = gsm.LocalRole.IsAI() ? FactionColors.AI : FactionColors.Human;
             }
+        }
+
+        /// <summary>YOUR ROLE パネル下の faction 行: 日本語で陣営 + 短い役職説明。</summary>
+        private static string BuildFactionDescription(RoleType role)
+        {
+            string faction = role.IsAI() ? "AI 陣営" : "人類陣営";
+            string desc = role switch
+            {
+                RoleType.Oracle     => "全員の陣営を識別 (CIPHER は盲点)",
+                RoleType.Admin      => "ORACLE と MC の区別がつかない",
+                RoleType.Operator   => "能力なし。推理で AI を見抜く",
+                RoleType.MotherCore => "AI のリーダー。OVERRIDE を主導",
+                RoleType.Agent      => "標準 AI。NOISE 混入で妨害",
+                RoleType.Cipher     => "ORACLE から隠された AI",
+                RoleType.Drone      => "2 ハック終了後に AI として覚醒",
+                RoleType.Radical    => "孤立 AI。OVERRIDE 時のみ他 AI と合流",
+                _                   => "",
+            };
+            return $"&gt; {faction}\n&gt; {desc}";
         }
 
         private string ResolveColoredPlayerName(PlayerRef pr)
