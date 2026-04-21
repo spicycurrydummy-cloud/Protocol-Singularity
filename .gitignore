@@ -84,3 +84,11 @@ Unity_v*.x.ulf
 # Unity / 開発補助ログ
 debug.log
 *.log
+
+# GitHub Actions デプロイ時の作業用ファイル (コミットしない)
+unity-alf/
+run-logs/
+*.zip
+runs.json
+artifacts.json
+set_secret.py
