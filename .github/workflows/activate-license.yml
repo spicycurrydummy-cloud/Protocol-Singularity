@@ -11,16 +11,25 @@ jobs:
   request:
     name: Request .alf activation file
     runs-on: ubuntu-latest
+    container:
+      image: unityci/editor:ubuntu-6000.4.1f1-webgl-3
+      options: --user root
     steps:
-      - name: Request manual activation file
-        id: activation
-        uses: game-ci/unity-request-manual-activation-file@v2
-        with:
-          unityVersion: 6000.4.1f1
+      - name: Create manual activation file
+        run: |
+          cd $GITHUB_WORKSPACE
+          # Unity -createManualActivationFile は exit code 非ゼロで終わるため || true で継続
+          /opt/unity/Editor/Unity \
+            -batchmode \
+            -nographics \
+            -createManualActivationFile \
+            -quit \
+            -logFile /dev/stdout || true
+          ls -la *.alf
 
       - name: Upload .alf as artifact
         uses: actions/upload-artifact@v4
         with:
           name: unity-activation-file
-          path: ${{ steps.activation.outputs.filePath }}
+          path: "*.alf"
           retention-days: 1
