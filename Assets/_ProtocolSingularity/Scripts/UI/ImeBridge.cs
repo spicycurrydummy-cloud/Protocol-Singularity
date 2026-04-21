@@ -20,6 +20,24 @@ namespace ProtocolSingularity.UI
         /// <summary>Enter キーで送信指示が来たときに発火。</summary>
         public static event Action Submitted;
 
+        /// <summary>
+        /// HTML overlay からの文字列をこのコールバック経由でアクティブなフィールドへ流す。
+        /// TextField が FocusIn したら Bind、他フィールドへ切替わったら上書きで Bind。
+        /// </summary>
+        private static Action<string> _activeSetter;
+        private static Action _activeSubmit;
+
+        public static void BindActive(Action<string> setter, Action submit)
+        {
+            _activeSetter = setter;
+            _activeSubmit = submit;
+        }
+
+        public static void UnbindActive(Action<string> setter)
+        {
+            if (ReferenceEquals(_activeSetter, setter)) _activeSetter = null;
+        }
+
 #if UNITY_WEBGL && !UNITY_EDITOR
         [DllImport("__Internal")] private static extern void ImeBridge_Show();
         [DllImport("__Internal")] private static extern void ImeBridge_Hide();
@@ -49,12 +67,15 @@ namespace ProtocolSingularity.UI
         /// <summary>JS (ime-bridge.js) からの SendMessage 受信口 — value 全体。</summary>
         public void ReceiveImeText(string text)
         {
-            TextChanged?.Invoke(text ?? string.Empty);
+            var t = text ?? string.Empty;
+            _activeSetter?.Invoke(t);     // アクティブフィールドへ直接ルーティング (per-field 受信)
+            TextChanged?.Invoke(t);       // グローバル購読者へも通知 (後方互換)
         }
 
         /// <summary>JS からの Enter 送信通知。</summary>
         public void ReceiveImeSubmit(string _)
         {
+            _activeSubmit?.Invoke();
             Submitted?.Invoke();
         }
 

@@ -31,7 +31,7 @@
     inputEl.autocomplete = "off";
     inputEl.autocapitalize = "off";
     inputEl.spellcheck = false;
-    inputEl.placeholder = "ここにメッセージを入力... (Enter で送信)";
+    inputEl.placeholder = "ここに入力... (日本語 IME 対応)";
 
     // Unity chat-input に合わせたターミナル風スタイル。
     var s = inputEl.style;

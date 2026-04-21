@@ -75,6 +75,20 @@ namespace ProtocolSingularity.UI
             // 前回入力が残ることがあるため、明示的に空文字で上書きする。
             if (_nameInput != null) _nameInput.SetValueWithoutNotify(string.Empty);
             if (_codeInput != null) _codeInput.SetValueWithoutNotify(string.Empty);
+
+            // WebGL では UI Toolkit TextField が IME / 日本語入力を取りこぼすため、
+            // 画面下部の HTML overlay 経由でフォーカス中フィールドへ値を流す。
+            if (ImeBridge.IsAvailable)
+            {
+                WireImeField(_nameInput);
+                WireImeField(_codeInput);
+                // 初期ターゲットは name-input (クリック前でも入力可能)
+                ImeBridge.SetValue(string.Empty);
+                if (_nameInput != null)
+                    ImeBridge.BindActive(v => _nameInput.SetValueWithoutNotify(v), null);
+                ImeBridge.Show();
+            }
+
             SetStatus("> READY.");
 
             FusionSessionManager.Instance.SessionListUpdated += OnSessionListUpdated;
@@ -93,6 +107,24 @@ namespace ProtocolSingularity.UI
             if (_rulesCloseBtn != null) _rulesCloseBtn.clicked -= CloseRules;
             if (FusionSessionManager.Instance != null)
                 FusionSessionManager.Instance.SessionListUpdated -= OnSessionListUpdated;
+            ImeBridge.BindActive(null, null);
+        }
+
+        /// <summary>
+        /// UI Toolkit TextField にフォーカスが入ったら HTML overlay の値をミラー → 入力を受信するよう Bind。
+        /// WebGL 以外では no-op (ImeBridge.IsAvailable が false で呼ばれないため)。
+        /// </summary>
+        private void WireImeField(TextField field)
+        {
+            if (field == null) return;
+            field.isReadOnly = true;
+            field.tooltip = "画面下部の入力欄に入力してください";
+            field.RegisterCallback<FocusInEvent>(_ =>
+            {
+                ImeBridge.SetValue(field.value);
+                ImeBridge.BindActive(v => field.SetValueWithoutNotify(v), null);
+                ImeBridge.Show();
+            });
         }
 
         private void OpenRules()
