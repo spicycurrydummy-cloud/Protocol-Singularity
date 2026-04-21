@@ -13,11 +13,48 @@
     --ps-warn: rgb(255, 210, 80);
 }
 
+/* プロジェクト全体に Noto Sans JP を適用 (日本語グリフ対応)。
+   Unity は .ttf を Font asset として Dynamic モードでインポートするため、
+   実行時にグリフアトラスが拡張される (WebGL 含む)。 */
 .terminal-root {
+    -unity-font-definition: none;
+    -unity-font: url("project://database/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-Regular.ttf");
     background-color: var(--ps-bg);
     color: var(--ps-fg);
     flex-grow: 1;
     padding: 40px 56px;
+}
+
+/* UI Toolkit では一部の組み込みコントロール (Button / TextField 内部) が
+   親の -unity-font を継承しないため、Label や Button、入力欄に明示的に再指定する。 */
+.label,
+.label-accent,
+.label-dim,
+.title-text,
+.subtitle-text,
+.status-line,
+.prompt-btn,
+.lobby-toggle,
+.chat-input,
+.chat-entry-text,
+.game-log-entry,
+.role-lineup-row-name,
+.role-lineup-row-count,
+.role-label,
+.hack-log-round,
+.hack-log-result,
+.hack-log-body,
+.menu-title,
+.rules-body,
+.unity-button,
+.unity-label,
+.unity-text-element,
+.unity-base-field__label,
+.unity-base-text-field__input,
+.unity-text-field__input,
+.unity-toggle__text {
+    -unity-font-definition: none;
+    -unity-font: url("project://database/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-Regular.ttf");
 }
 
 .terminal-header {

@@ -92,3 +92,26 @@ run-logs/
 runs.json
 artifacts.json
 set_secret.py
+dr*.json
+deploy-run.json
+secrets.json
+
+# Noto Sans JP の未使用 variant (Regular 以外は build 対象外なのでリポに入れない)
+/Assets/Fonts/Noto_Sans_JP/NotoSansJP-VariableFont_wght.ttf
+/Assets/Fonts/Noto_Sans_JP/NotoSansJP-VariableFont_wght.ttf.meta
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-Black.ttf
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-Black.ttf.meta
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-Bold.ttf
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-Bold.ttf.meta
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-ExtraBold.ttf
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-ExtraBold.ttf.meta
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-ExtraLight.ttf
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-ExtraLight.ttf.meta
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-Light.ttf
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-Light.ttf.meta
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-Medium.ttf
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-Medium.ttf.meta
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-SemiBold.ttf
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-SemiBold.ttf.meta
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-Thin.ttf
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-Thin.ttf.meta
