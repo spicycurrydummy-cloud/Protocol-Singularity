@@ -1,0 +1,96 @@
+name: Build WebGL & Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時実行は最新 1 つだけ。古いキューは中断。
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build WebGL
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # Unity の Library を round-trip で使い回してビルド時間を短縮
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-
+
+      # Secret から mercury2-config.json を組み立てて StreamingAssets へ。
+      # リポジトリはパブリックなのでキーは絶対にコミットしない前提。
+      - name: Inject Mercury2 config
+        env:
+          MERCURY2_API_KEY: ${{ secrets.MERCURY2_API_KEY }}
+          MERCURY2_ENDPOINT: ${{ secrets.MERCURY2_ENDPOINT }}
+          MERCURY2_MODEL: ${{ secrets.MERCURY2_MODEL }}
+        run: |
+          mkdir -p Assets/StreamingAssets
+          ENDPOINT="${MERCURY2_ENDPOINT:-https://api.inceptionlabs.ai/v1}"
+          MODEL="${MERCURY2_MODEL:-mercury-2}"
+          cat > Assets/StreamingAssets/mercury2-config.json <<EOF
+          {
+            "apiKey": "${MERCURY2_API_KEY}",
+            "endpoint": "${ENDPOINT}",
+            "timeoutSeconds": 30,
+            "model": "${MODEL}"
+          }
+          EOF
+          if [ -z "${MERCURY2_API_KEY}" ]; then
+            echo "::warning::MERCURY2_API_KEY secret is empty — CPU players will fall back to random behavior."
+          fi
+
+      - name: Build WebGL
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          unityVersion: 6000.4.1f1
+          targetPlatform: WebGL
+          buildName: ProtocolSingularity
+          buildsPath: build
+
+      - name: Prepare Pages artifact
+        run: |
+          mkdir -p _site
+          cp -r build/WebGL/ProtocolSingularity/. _site/
+          # GitHub Pages は Jekyll を介して配信される。Unity の出力フォルダに _ で始まる
+          # ものはないはずだが、念のため .nojekyll を置いて Jekyll 処理をスキップ。
+          touch _site/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

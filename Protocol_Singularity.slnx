@@ -1,0 +1,5 @@
+﻿<Solution>
+  <Project Path="Fusion.Unity.Editor.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="Fusion.Unity.csproj" />
+</Solution>

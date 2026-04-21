@@ -1,0 +1,239 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/_ProtocolSingularity/UI/Shared/Terminal.uss" />
+    <Style src="project://database/Assets/_ProtocolSingularity/UI/Lobby/LobbyScreen.uss" />
+    <ui:VisualElement class="terminal-root">
+        <ui:VisualElement class="terminal-header header-with-menu">
+            <ui:VisualElement class="header-main">
+                <ui:VisualElement class="lobby-header-row">
+                    <ui:Label name="scene-title" text="SESSION LOBBY" class="title-text" />
+                    <ui:Label name="session-code-line" text="[----------]" class="title-text session-code" />
+                </ui:VisualElement>
+                <ui:VisualElement class="session-header-sub">
+                    <ui:Label name="scene-subtitle" text="&gt; awaiting operator connections..." class="subtitle-text" />
+                    <ui:Toggle name="lock-toggle" text="Lock session (hide from public list)" value="false" class="lobby-toggle lock-toggle-inline" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:Button name="menu-btn" text="⚙" class="menu-btn" tooltip="Menu" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="main-split" class="main-split">
+        <ui:VisualElement name="main-left" class="main-left">
+
+        <!-- ============================= -->
+        <!-- Phase.Lobby main content      -->
+        <!-- ============================= -->
+        <ui:VisualElement name="lobby-phase-content" class="phase-content">
+            <ui:VisualElement class="section-columns">
+                <ui:VisualElement class="terminal-panel column lobby-players">
+                    <ui:Label text="&gt;&gt; CONNECTED OPERATORS" class="label label-accent" />
+                    <ui:ScrollView name="player-list" class="player-list" />
+                    <ui:Label name="player-count-line" text="[ 0 / 10 ]" class="label label-dim" />
+                </ui:VisualElement>
+
+                <ui:VisualElement name="host-settings-panel" class="terminal-panel column lobby-settings">
+                    <ui:Label text="&gt;&gt; HOST CONFIG" class="label label-accent" />
+
+                    <ui:Label text="&gt; TARGET PLAYER COUNT" class="label" />
+                    <ui:SliderInt name="player-count-slider" low-value="6" high-value="10" value="6" show-input-field="true" />
+
+                    <ui:Label text="&gt; DISCUSSION TIME (sec)" class="label setting-label" />
+                    <ui:SliderInt name="discussion-slider" low-value="30" high-value="180" value="60" show-input-field="true" />
+
+                    <ui:Label text="&gt; VOTE TIME (sec)" class="label setting-label" />
+                    <ui:SliderInt name="vote-slider" low-value="15" high-value="90" value="30" show-input-field="true" />
+
+                    <ui:Label text="&gt; HACK TIME (sec)" class="label setting-label" />
+                    <ui:SliderInt name="hack-slider" low-value="15" high-value="60" value="30" show-input-field="true" />
+
+                    <ui:Toggle name="cpu-fill-toggle" text="Enable CPU fill (Mercury2)" value="true" class="lobby-toggle" />
+
+                    <ui:VisualElement name="role-lineup-panel" class="role-lineup-panel">
+                        <ui:Label text="&gt; ROLES" class="label label-accent" />
+                        <ui:Label name="role-lineup-compact" text="" class="label label-dim" />
+                        <ui:Label name="role-lineup-summary" text="" class="label label-dim" />
+                        <ui:Button name="role-edit-btn" text="[ EDIT ]" class="prompt-btn prompt-btn-small" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="lobby-actions">
+                <ui:Button name="start-btn" text="[ GAME START ]" class="prompt-btn prompt-btn-primary" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ============================= -->
+        <!-- In-game main content (status only; actions are popup) -->
+        <!-- ============================= -->
+        <ui:VisualElement name="ingame-phase-content" class="phase-content" style="display: none;">
+            <ui:VisualElement class="section-columns ingame-columns">
+                <ui:VisualElement class="ingame-left-column">
+                    <ui:VisualElement class="terminal-panel">
+                        <ui:Label text="&gt;&gt; YOUR ROLE" class="label label-accent" />
+                        <ui:Label name="ingame-role-label" text="..." class="label role-label" />
+                        <ui:Label name="ingame-faction-label" text="..." class="label label-dim" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="terminal-panel">
+                        <ui:Label text="&gt;&gt; OPERATORS" class="label label-accent" />
+                        <ui:ScrollView name="ingame-player-list" class="player-list" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="ingame-center-column">
+                    <ui:VisualElement class="terminal-panel ingame-status-panel">
+                        <ui:Label text="&gt;&gt; INFILTRATION STATUS" class="label label-accent" />
+                        <ui:Label name="ingame-phase-label" text="PHASE: -" class="label" />
+                        <ui:Label name="ingame-round-label" text="ROUND: -" class="label" />
+                        <ui:Label name="ingame-counters-label" text="SUCCESS: 0 / FAIL: 0 / REJECT: 0" class="label" />
+                        <ui:Label name="ingame-leader-label" text="LEADER: -" class="label" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="terminal-panel ingame-hack-panel">
+                        <ui:Label text="&gt;&gt; HACK LOG" class="label label-accent" />
+                        <ui:Label name="hack-log-empty" text="&gt; no hack attempts yet..." class="label label-dim" />
+                        <ui:ScrollView name="hack-log-list" class="hack-log-list" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        </ui:VisualElement> <!-- /main-left -->
+
+        <!-- ============================= -->
+        <!-- Chat (always visible, right column) -->
+        <!-- ============================= -->
+        <ui:VisualElement name="chat-column" class="chat-column">
+            <ui:VisualElement name="chat-panel" class="chat-panel">
+                <ui:Label text="&gt;&gt; COMM CHANNEL" class="label label-accent" />
+                <ui:ScrollView name="chat-log" class="chat-log" />
+            </ui:VisualElement>
+            <ui:VisualElement name="chat-composer" class="chat-composer">
+                <ui:VisualElement name="chat-mention-row" class="chat-mention-row" />
+                <ui:VisualElement class="chat-composer-row">
+                    <ui:TextField name="chat-input" max-length="120" class="chat-input" />
+                    <ui:Button name="chat-send-btn" text="[ SEND ]" class="prompt-btn chat-send-btn" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        </ui:VisualElement> <!-- /main-split -->
+
+        <ui:Label name="status-line" text="&gt; READY." class="status-line" />
+
+        <!-- ============================= -->
+        <!-- Phase action popup (non-modal). picking-mode=Ignore on the overlay lets -->
+        <!-- clicks fall through to the chat panel underneath; the dialog child still -->
+        <!-- receives clicks normally. Root-level so the dialog isn't clipped by main-left width. -->
+        <!-- ============================= -->
+        <ui:VisualElement name="phase-popup-overlay" class="phase-popup-overlay" style="display: none;" picking-mode="Ignore">
+            <ui:VisualElement name="phase-popup-dialog" class="phase-popup-dialog">
+                <ui:Button name="phase-popup-minimize-btn" text="[ v ]" class="prompt-btn phase-popup-minimize-btn" tooltip="Minimize" />
+                <!-- Team Proposal -->
+                <ui:VisualElement name="team-proposal-section" class="phase-section" style="display: none;">
+                    <ui:Label text="&gt;&gt; TEAM PROPOSAL" class="label label-accent" />
+                    <ui:Label name="team-proposal-instruction" text="" class="label" />
+                    <ui:ScrollView name="team-pick-list" class="player-list team-pick-list" />
+                    <ui:Button name="propose-btn" text="[ PROPOSE TEAM ]" class="prompt-btn" />
+                </ui:VisualElement>
+
+                <!-- Approval Vote -->
+                <ui:VisualElement name="vote-section" class="phase-section" style="display: none;">
+                    <ui:Label text="&gt;&gt; APPROVAL VOTE" class="label label-accent" />
+                    <ui:Label name="vote-proposal-display" text="" class="label" />
+                    <ui:VisualElement class="vote-buttons">
+                        <ui:Button name="vote-yes-btn" text="[ APPROVE ]" class="prompt-btn prompt-btn-primary" />
+                        <ui:Button name="vote-no-btn" text="[ REJECT ]" class="prompt-btn prompt-btn-danger" />
+                    </ui:VisualElement>
+                    <ui:Label name="vote-status-label" text="" class="label label-dim" />
+                </ui:VisualElement>
+
+                <!-- Hacking -->
+                <ui:VisualElement name="hacking-section" class="phase-section" style="display: none;">
+                    <ui:Label text="&gt;&gt; HACK PROTOCOL" class="label label-accent" />
+                    <ui:Label name="hacking-instruction" text="" class="label" />
+                    <ui:VisualElement class="vote-buttons">
+                        <ui:Button name="hack-clean-btn" text="[ SUBMIT CLEAN ]" class="prompt-btn prompt-btn-primary" />
+                        <ui:Button name="hack-noise-btn" text="[ SUBMIT NOISE ]" class="prompt-btn prompt-btn-danger" />
+                    </ui:VisualElement>
+                    <ui:Label name="hacking-status-label" text="" class="label label-dim" />
+                </ui:VisualElement>
+
+                <!-- Round Result -->
+                <ui:VisualElement name="result-section" class="phase-section" style="display: none;">
+                    <ui:Label text="&gt;&gt; HACK RESULT" class="label label-accent" />
+                    <ui:Label name="result-headline" text="" class="label result-headline" />
+                    <ui:Label name="result-detail" text="" class="label" />
+                </ui:VisualElement>
+
+                <!-- Override Discussion -->
+                <ui:VisualElement name="override-discussion-section" class="phase-section" style="display: none;">
+                    <ui:Label text="&gt;&gt; OVERRIDE PROTOCOL" class="label label-accent" />
+                    <ui:Label name="override-discussion-headline" text="MOTHER CORE PROTECTION LIFTED" class="label result-headline" />
+                    <ui:Label name="override-discussion-instruction" text="" class="label" />
+                </ui:VisualElement>
+
+                <!-- Override Vote -->
+                <ui:VisualElement name="override-vote-section" class="phase-section" style="display: none;">
+                    <ui:Label text="&gt;&gt; OVERRIDE TARGET" class="label label-accent" />
+                    <ui:Label name="override-vote-instruction" text="" class="label" />
+                    <ui:ScrollView name="override-target-list" class="player-list team-pick-list" />
+                    <ui:Button name="override-vote-submit-btn" text="[ OVERRIDE THIS TARGET ]" class="prompt-btn prompt-btn-danger" />
+                    <ui:Label name="override-vote-status" text="" class="label label-dim" />
+                </ui:VisualElement>
+
+                <!-- Override Result -->
+                <ui:VisualElement name="override-result-section" class="phase-section" style="display: none;">
+                    <ui:Label text="&gt;&gt; OVERRIDE RESULT" class="label label-accent" />
+                    <ui:Label name="override-result-headline" text="" class="label result-headline" />
+                    <ui:Label name="override-result-detail" text="" class="label" />
+                </ui:VisualElement>
+
+                <!-- Game End (larger popup) -->
+                <ui:VisualElement name="gameend-section" class="phase-section gameend-dialog-content" style="display: none;">
+                    <ui:Label text="&gt;&gt; SIMULATION TERMINATED" class="label label-accent" />
+                    <ui:Label name="gameend-headline" text="" class="label result-headline" />
+                    <ui:Label name="gameend-detail" text="" class="label" />
+
+                    <ui:Label text="&gt; HACK LOG" class="label label-accent setting-label" />
+                    <ui:Label name="gameend-hack-history" text="" class="label hack-history" />
+
+                    <ui:Label text="&gt; ROLE DISCLOSURE" class="label label-accent setting-label" />
+                    <ui:ScrollView name="gameend-roles-list" class="player-list" />
+
+                    <ui:VisualElement class="lobby-actions">
+                        <ui:Button name="gameend-return-btn" text="[ RETURN TO LOBBY ]" class="prompt-btn prompt-btn-primary" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ============================= -->
+        <!-- Reopen bar (shown only when dialog is minimized) -->
+        <!-- ============================= -->
+        <ui:VisualElement name="phase-popup-reopen-bar" class="phase-popup-reopen-bar" style="display: none;" picking-mode="Ignore">
+            <ui:Button name="phase-popup-reopen-btn" text="[ ^ OPEN ACTION PANEL ]" class="prompt-btn phase-popup-reopen-btn" />
+        </ui:VisualElement>
+
+        <!-- ============================= -->
+        <!-- Menu overlay (modal)          -->
+        <!-- ============================= -->
+        <ui:VisualElement name="menu-overlay" class="menu-overlay" style="display: none;">
+            <ui:VisualElement name="menu-dialog" class="menu-dialog">
+                <ui:Label text="// MENU" class="label label-accent menu-title" />
+                <ui:Button name="menu-close-btn" text="[ RESUME ]" class="prompt-btn" />
+                <ui:Button name="menu-leave-btn" text="[ LEAVE SESSION ]" class="prompt-btn prompt-btn-danger" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ============================= -->
+        <!-- Role editor overlay (host-only modal) -->
+        <!-- ============================= -->
+        <ui:VisualElement name="role-editor-overlay" class="menu-overlay" style="display: none;">
+            <ui:VisualElement name="role-editor-dialog" class="menu-dialog role-editor-dialog">
+                <ui:Label text="// ROLES" class="label label-accent menu-title" />
+                <ui:VisualElement name="role-lineup-list" class="role-lineup-list" />
+                <ui:Label name="role-editor-summary" text="" class="label label-dim" />
+                <ui:Button name="role-editor-close-btn" text="[ DONE ]" class="prompt-btn" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

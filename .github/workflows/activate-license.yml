@@ -1,0 +1,26 @@
+name: Request Unity Activation File
+
+# Unity ライセンスを初めて取得するときだけ手動で走らせる workflow。
+# 実行すると .alf が artifact として出力される → ブラウザで .ulf に変換 → UNITY_LICENSE secret に貼る。
+# 詳細は .github/DEPLOY.md を参照。
+
+on:
+  workflow_dispatch:
+
+jobs:
+  request:
+    name: Request .alf activation file
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request activation file
+        uses: game-ci/unity-request-activation-file@v2
+        id: activation
+        with:
+          unityVersion: 6000.4.1f1
+
+      - name: Upload .alf as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-activation-file
+          path: ${{ steps.activation.outputs.filePath }}
+          retention-days: 1

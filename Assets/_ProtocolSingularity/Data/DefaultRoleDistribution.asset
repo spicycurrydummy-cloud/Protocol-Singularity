@@ -1,0 +1,105 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8e4edfa7aca6934da84bb4c80490e40, type: 3}
+  m_Name: DefaultRoleDistribution
+  m_EditorClassIdentifier: Assembly-CSharp::ProtocolSingularity.Data.RoleDistributionConfig
+  entries:
+  - playerCount: 1
+    includeOracle: 1
+    includeAdmin: 0
+    includeMotherCore: 0
+    operatorCount: 0
+    agentCount: 0
+    includeCipher: 0
+    includeDrone: 0
+    includeRadical: 0
+  - playerCount: 2
+    includeOracle: 1
+    includeAdmin: 0
+    includeMotherCore: 1
+    operatorCount: 0
+    agentCount: 0
+    includeCipher: 0
+    includeDrone: 0
+    includeRadical: 0
+  - playerCount: 3
+    includeOracle: 1
+    includeAdmin: 1
+    includeMotherCore: 1
+    operatorCount: 0
+    agentCount: 0
+    includeCipher: 0
+    includeDrone: 0
+    includeRadical: 0
+  - playerCount: 4
+    includeOracle: 1
+    includeAdmin: 1
+    includeMotherCore: 1
+    operatorCount: 1
+    agentCount: 0
+    includeCipher: 0
+    includeDrone: 0
+    includeRadical: 0
+  - playerCount: 5
+    includeOracle: 1
+    includeAdmin: 1
+    includeMotherCore: 1
+    operatorCount: 1
+    agentCount: 1
+    includeCipher: 0
+    includeDrone: 0
+    includeRadical: 0
+  - playerCount: 6
+    includeOracle: 1
+    includeAdmin: 1
+    includeMotherCore: 1
+    operatorCount: 2
+    agentCount: 1
+    includeCipher: 0
+    includeDrone: 0
+    includeRadical: 0
+  - playerCount: 7
+    includeOracle: 1
+    includeAdmin: 1
+    includeMotherCore: 1
+    operatorCount: 2
+    agentCount: 1
+    includeCipher: 1
+    includeDrone: 0
+    includeRadical: 0
+  - playerCount: 8
+    includeOracle: 1
+    includeAdmin: 1
+    includeMotherCore: 1
+    operatorCount: 3
+    agentCount: 0
+    includeCipher: 1
+    includeDrone: 1
+    includeRadical: 0
+  - playerCount: 9
+    includeOracle: 1
+    includeAdmin: 1
+    includeMotherCore: 1
+    operatorCount: 4
+    agentCount: 0
+    includeCipher: 1
+    includeDrone: 1
+    includeRadical: 0
+  - playerCount: 10
+    includeOracle: 1
+    includeAdmin: 1
+    includeMotherCore: 1
+    operatorCount: 4
+    agentCount: 0
+    includeCipher: 1
+    includeDrone: 1
+    includeRadical: 1

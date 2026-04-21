@@ -1,0 +1,817 @@
+/* Protocol Singularity - Lobby specific styles */
+
+.lobby-header-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.session-header-sub {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+}
+
+.lock-toggle-inline {
+    margin: 0;
+    font-size: 14px;
+    color: rgb(160, 200, 170);
+}
+
+/* In-game 3-column layout: narrow left (role + player list), wide center (hack log),
+   narrow right (status). Chat panel (sibling) gets more room since the left column
+   is capped. */
+.ingame-columns {
+    flex-grow: 1;
+    align-items: stretch;
+}
+
+.ingame-left-column {
+    flex-direction: column;
+    flex-shrink: 0;
+    width: 240px;
+    min-width: 200px;
+    margin-right: 10px;
+    margin-left: 10px;
+}
+
+.ingame-center-column {
+    flex-direction: column;
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-right: 10px;
+    margin-left: 0;
+}
+
+.ingame-status-panel {
+    flex-shrink: 0;
+}
+
+.ingame-hack-panel {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* ---- HACK LOG panel (center column) ---- */
+.hack-log-list {
+    flex-grow: 1;
+    margin-top: 6px;
+    min-height: 120px;
+}
+
+.hack-log-row {
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    background-color: rgb(14, 20, 14);
+    border-left-width: 4px;
+    border-left-color: rgb(60, 200, 120);
+}
+
+.hack-log-row.-success {
+    border-left-color: rgb(120, 255, 180);
+}
+
+.hack-log-row.-fail {
+    border-left-color: rgb(255, 140, 140);
+    background-color: rgb(28, 14, 14);
+}
+
+.hack-log-head {
+    flex-direction: row;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.hack-log-round {
+    font-size: 16px;
+    -unity-font-style: bold;
+    color: rgb(200, 230, 200);
+}
+
+.hack-log-result {
+    font-size: 16px;
+    -unity-font-style: bold;
+}
+
+.hack-log-result.-success { color: rgb(120, 255, 180); }
+.hack-log-result.-fail { color: rgb(255, 140, 140); }
+
+.hack-log-body {
+    font-size: 14px;
+    color: rgb(180, 210, 190);
+    white-space: normal;
+}
+
+.phase-content {
+    flex-grow: 1;
+}
+
+.role-label {
+    font-size: 28px;
+    -unity-font-style: bold;
+    color: rgb(80, 255, 170);
+    margin: 8px 0;
+}
+
+.action-panel {
+    margin-top: 8px;
+}
+
+.phase-section {
+    margin: 4px 0;
+}
+
+.team-pick-list {
+    min-height: 140px;
+    max-height: 260px;
+    margin: 8px 0;
+}
+
+.vote-buttons {
+    flex-direction: row;
+    margin: 8px 0;
+}
+
+#vote-status-label {
+    white-space: normal;
+    margin-top: 4px;
+    font-size: 16px;
+    min-height: 60px;
+}
+
+#vote-proposal-display {
+    white-space: normal;
+    margin-bottom: 6px;
+}
+
+.vote-buttons > .prompt-btn {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+.result-headline {
+    font-size: 26px;
+    -unity-font-style: bold;
+    color: rgb(80, 255, 170);
+    margin: 12px 0 8px 0;
+}
+
+.result-headline.-fail {
+    color: rgb(255, 120, 120);
+}
+
+.pick-item {
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    background-color: rgb(16, 22, 16);
+    border-left-width: 3px;
+    border-left-color: rgb(60, 200, 120);
+    min-height: 44px;
+}
+
+.pick-item.-selected {
+    border-left-color: rgb(255, 210, 80);
+    background-color: rgb(24, 36, 20);
+}
+
+.pick-item > .pick-toggle {
+    margin-right: 12px;
+}
+
+.pick-item > .pick-name {
+    flex-grow: 1;
+    font-size: 18px;
+    color: rgb(200, 230, 200);
+}
+
+/* ========== Game event log ========== */
+
+.game-log-panel {
+    background-color: rgb(10, 16, 10);
+    border-width: 1px;
+    border-color: rgb(40, 120, 80);
+    padding: 8px 14px;
+    margin-top: 8px;
+    min-height: 120px;
+    max-height: 220px;
+}
+
+.game-log {
+    flex-grow: 1;
+    min-height: 80px;
+    max-height: 160px;
+    margin: 4px 0;
+    background-color: rgb(8, 14, 10);
+    padding: 4px 8px;
+}
+
+.game-log-entry {
+    font-size: 14px;
+    color: rgb(160, 200, 170);
+    padding: 2px 0;
+    white-space: normal;
+}
+
+.game-log-entry.-headline {
+    color: rgb(255, 210, 80);
+    -unity-font-style: bold;
+}
+
+.game-log-entry.-hack-success {
+    color: rgb(120, 255, 180);
+}
+
+.game-log-entry.-hack-fail {
+    color: rgb(255, 140, 140);
+}
+
+/* ---- System log tag styling (prefix-based). Tag prefix is colored via a
+       pseudo-background so it stands out from free-form chat. ---- */
+.game-log-entry.-tag-game {
+    color: rgb(255, 210, 80);
+    -unity-font-style: bold;
+    padding: 4px 6px;
+    margin: 2px 0;
+    background-color: rgba(80, 60, 0, 0.35);
+    border-left-width: 3px;
+    border-left-color: rgb(255, 210, 80);
+}
+
+.game-log-entry.-tag-round {
+    color: rgb(160, 230, 255);
+    -unity-font-style: bold;
+    padding: 3px 6px;
+    margin: 2px 0;
+    background-color: rgba(20, 40, 70, 0.35);
+    border-left-width: 3px;
+    border-left-color: rgb(160, 230, 255);
+}
+
+.game-log-entry.-tag-team {
+    color: rgb(200, 240, 200);
+    padding: 2px 6px;
+    border-left-width: 2px;
+    border-left-color: rgb(120, 200, 140);
+}
+
+.game-log-entry.-tag-vote {
+    padding: 2px 6px;
+    border-left-width: 2px;
+    border-left-color: rgb(180, 180, 255);
+}
+
+.game-log-entry.-tag-hack {
+    -unity-font-style: bold;
+    padding: 3px 6px;
+    margin: 2px 0;
+    border-left-width: 3px;
+    border-left-color: rgb(180, 180, 180);
+}
+
+.game-log-entry.-tag-override {
+    color: rgb(255, 160, 200);
+    -unity-font-style: bold;
+    padding: 4px 6px;
+    margin: 2px 0;
+    background-color: rgba(60, 20, 40, 0.45);
+    border-left-width: 3px;
+    border-left-color: rgb(255, 120, 180);
+}
+
+/* ========== Chat panel ========== */
+
+/* ========== Main split: left content + right chat column ========== */
+.main-split {
+    flex-direction: row;
+    flex-grow: 1;
+    align-items: stretch;
+}
+
+.main-left {
+    flex-direction: column;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+/* Right column: chat log panel (bordered, scrolls) + composer (unbordered,
+   always visible at bottom — "outside the frame" so SEND never disappears). */
+.chat-column {
+    flex-direction: column;
+    width: 640px;
+    min-width: 480px;
+    margin-left: 12px;
+    flex-shrink: 0;
+}
+
+.chat-panel {
+    background-color: rgb(14, 20, 14);
+    border-width: 1px;
+    border-color: rgb(60, 200, 120);
+    padding: 14px 18px;
+    margin-top: 0;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 0;
+    flex-direction: column;
+}
+
+.chat-log {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    min-height: 0;
+    margin: 8px 0;
+    background-color: rgb(10, 16, 10);
+    padding: 8px 12px;
+}
+
+.chat-composer {
+    flex-shrink: 0;
+    margin-top: 10px;
+}
+
+.chat-composer-row {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 6px;
+}
+
+.chat-dropdown {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+.chat-dropdown > .unity-base-field__label {
+    color: rgb(120, 160, 130);
+    font-size: 13px;
+    min-width: 70px;
+}
+
+.chat-dropdown .unity-base-popup-field__input,
+.chat-dropdown .unity-popup-field__input {
+    background-color: rgb(20, 28, 20);
+    color: rgb(200, 230, 200);
+    border-width: 1px;
+    border-color: rgb(60, 200, 120);
+    font-size: 16px;
+    min-height: 36px;
+    padding: 4px 8px;
+}
+
+.chat-send-btn {
+    min-height: 40px;
+    min-width: 110px;
+    padding: 8px 18px;
+    margin: 0;
+}
+
+.chat-input {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+.chat-input > .unity-base-text-field__input {
+    background-color: rgb(20, 28, 20);
+    color: rgb(200, 230, 200);
+    border-color: rgb(60, 200, 120);
+    border-width: 1px;
+    padding: 8px 10px;
+    font-size: 16px;
+    min-height: 36px;
+}
+
+.chat-mention-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    max-height: 96px;
+    margin-bottom: 6px;
+}
+
+.chat-mention-chip {
+    min-height: 26px;
+    padding: 2px 10px;
+    margin-right: 6px;
+    margin-bottom: 4px;
+    background-color: rgb(16, 22, 16);
+    border-width: 1px;
+    border-color: rgb(60, 200, 120);
+    font-size: 13px;
+    color: rgb(200, 230, 200);
+    flex-shrink: 0;
+}
+
+.chat-mention-chip:hover {
+    background-color: rgb(30, 60, 40);
+}
+
+/* Chat log entry (built dynamically via LobbyController) */
+.chat-entry {
+    padding: 6px 4px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(30, 50, 36);
+}
+
+.chat-entry-text {
+    font-size: 16px;
+    color: rgb(200, 230, 200);
+    white-space: normal;
+}
+
+.hack-history {
+    font-size: 18px;
+    -unity-font-style: bold;
+    letter-spacing: 4px;
+    margin: 6px 0 10px 0;
+}
+
+.role-row {
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    background-color: rgb(16, 22, 16);
+    border-left-width: 3px;
+    border-left-color: rgb(60, 200, 120);
+    min-height: 40px;
+}
+
+.role-row.-ai {
+    border-left-color: rgb(255, 120, 120);
+}
+
+.role-row > .role-row-name {
+    flex-grow: 1;
+    font-size: 18px;
+    color: rgb(200, 230, 200);
+}
+
+.role-row > .role-row-role {
+    font-size: 16px;
+    -unity-font-style: bold;
+    color: rgb(80, 255, 170);
+    margin-left: 12px;
+}
+
+.role-row.-ai > .role-row-role {
+    color: rgb(255, 120, 120);
+}
+
+/* ========== Phase popup overlay (non-blocking) ========== */
+
+/* Root-level full-screen overlay. picking-mode=Ignore (UXML) lets clicks fall through
+   to the chat panel beneath. The child .phase-popup-dialog has default picking-mode
+   (Position) so its buttons still receive events. Transparent — no backdrop. */
+.phase-popup-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+}
+
+.phase-popup-dialog {
+    background-color: rgb(12, 18, 12);
+    border-width: 2px;
+    border-color: rgb(80, 255, 170);
+    padding: 22px 28px;
+    min-width: 560px;
+    max-width: 820px;
+    max-height: 78%;
+}
+
+.phase-popup-minimize-btn {
+    align-self: flex-end;
+    min-width: 56px;
+    min-height: 30px;
+    padding: 2px 12px;
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+/* Reopen bar: invisible full-width row pinned at the bottom; its child button is
+   centered via flex. bar is picking-mode=Ignore (UXML) so only the button catches
+   clicks and the rest of the screen passes through to chat underneath. */
+.phase-popup-reopen-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 24px;
+    align-items: center;
+    justify-content: center;
+}
+
+.phase-popup-reopen-btn {
+    min-width: 320px;
+    min-height: 44px;
+    padding: 8px 24px;
+    font-size: 16px;
+    -unity-font-style: bold;
+    background-color: rgb(20, 40, 30);
+    color: rgb(160, 255, 210);
+    border-width: 2px;
+    border-color: rgb(80, 255, 170);
+}
+
+.phase-popup-reopen-btn:hover {
+    background-color: rgb(40, 80, 60);
+    color: rgb(200, 255, 230);
+}
+
+.gameend-dialog-content {
+    min-width: 640px;
+}
+
+/* ========== Menu button + overlay ========== */
+
+.header-with-menu {
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: space-between;
+}
+
+.header-main {
+    flex-grow: 1;
+}
+
+.menu-btn {
+    min-width: 56px;
+    min-height: 56px;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    margin: 0 0 0 12px;
+    font-size: 28px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    background-color: rgb(14, 20, 14);
+    color: rgb(180, 220, 180);
+    border-width: 1px;
+    border-color: rgb(60, 200, 120);
+    align-self: center;
+}
+
+.menu-btn:hover {
+    background-color: rgb(24, 48, 32);
+    color: rgb(160, 255, 210);
+}
+
+.menu-btn:active {
+    background-color: rgb(80, 255, 170);
+    color: rgb(8, 12, 8);
+}
+
+/* .menu-overlay / .menu-dialog / .menu-title are defined in Shared/Terminal.uss */
+
+.session-code {
+    font-size: 26px;
+    color: rgb(180, 220, 180);
+    -unity-font-style: bold;
+    letter-spacing: 2px;
+}
+
+.lobby-players {
+    min-width: 380px;
+}
+
+.player-list {
+    min-height: 260px;
+    max-height: 420px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.lobby-settings {
+    min-width: 380px;
+}
+
+.role-lineup-panel {
+    flex-direction: column;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    /* right padding は EDIT ボタン分 (72px + 余白) を避けるために大きめ */
+    padding: 10px 96px 12px 14px;
+    background-color: rgb(10, 16, 10);
+    border-width: 1px;
+    border-color: rgb(40, 120, 80);
+}
+
+/* ROLES 見出しだけは label-accent のデフォルト下マージン (10px) を縮める */
+.role-lineup-panel > .label-accent {
+    margin-bottom: 4px;
+}
+
+/* EDIT ボタンは absolute で右上の予約スペースに固定。in-flow のラベル群と重ならない。 */
+#role-edit-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 72px;
+    height: 28px;
+    min-width: 72px;
+    min-height: 28px;
+    padding: 0 8px;
+    margin: 0;
+    font-size: 13px;
+    -unity-text-align: middle-center;
+}
+
+.role-lineup-list {
+    margin-bottom: 6px;
+}
+
+.role-editor-dialog {
+    min-width: 520px;
+    max-width: 640px;
+}
+
+#role-lineup-compact {
+    white-space: normal;
+    margin: 4px 0 0 0;
+    font-size: 14px;
+    color: rgb(180, 220, 190);
+}
+
+#role-editor-summary {
+    margin-top: 8px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    white-space: normal;
+}
+
+#role-editor-summary.-error {
+    color: rgb(255, 140, 140);
+    -unity-font-style: bold;
+}
+
+.role-lineup-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    margin-bottom: 2px;
+    min-height: 30px;
+    background-color: rgb(14, 20, 14);
+    border-left-width: 2px;
+    border-left-color: rgb(60, 200, 120);
+}
+
+.role-lineup-row.-ai { border-left-color: rgb(255, 120, 120); }
+.role-lineup-row.-fixed { opacity: 0.75; }
+.role-lineup-row.-disabled { opacity: 0.4; }
+
+.role-lineup-row-name {
+    font-size: 15px;
+    color: rgb(200, 230, 200);
+    flex-grow: 1;
+}
+
+.role-lineup-row-count {
+    font-size: 15px;
+    color: rgb(160, 200, 170);
+    min-width: 36px;
+    -unity-text-align: middle-right;
+    margin-right: 8px;
+}
+
+.role-lineup-row-toggle {
+    margin: 0;
+}
+
+#role-lineup-summary {
+    margin-top: 2px;
+    font-size: 14px;
+    white-space: normal;
+}
+
+#role-lineup-summary.-error {
+    color: rgb(255, 140, 140);
+    -unity-font-style: bold;
+}
+
+.setting-label {
+    margin-top: 8px;
+}
+
+.lobby-toggle {
+    margin-top: 10px;
+    color: rgb(200, 230, 200);
+    font-size: 18px;
+}
+
+.lobby-toggle > .unity-toggle__input > .unity-toggle__checkmark {
+    min-width: 22px;
+    min-height: 22px;
+}
+
+/* Slider tuning: make the track and dragger easier to grab (also mobile friendly) */
+.unity-base-slider {
+    min-height: 36px;
+    margin: 4px 0 6px 0;
+}
+
+.unity-base-slider__tracker {
+    min-height: 8px;
+    background-color: rgb(40, 70, 50);
+    border-radius: 2px;
+}
+
+.unity-base-slider__dragger {
+    min-width: 22px;
+    min-height: 28px;
+    background-color: rgb(80, 255, 170);
+    border-color: rgb(160, 255, 210);
+    border-width: 1px;
+    border-radius: 3px;
+}
+
+.unity-base-slider__dragger:hover {
+    background-color: rgb(160, 255, 210);
+}
+
+.unity-base-slider__text-field {
+    min-width: 64px;
+    margin-left: 12px;
+}
+
+.unity-base-slider__text-field > .unity-base-text-field__input {
+    background-color: rgb(20, 28, 20);
+    color: rgb(200, 230, 200);
+    border-color: rgb(60, 200, 120);
+    border-width: 1px;
+    padding: 6px 8px;
+    font-size: 18px;
+}
+
+.lobby-actions {
+    flex-direction: row;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.prompt-btn-primary {
+    flex-grow: 2;
+    margin-right: 14px;
+}
+
+.prompt-btn-danger {
+    color: rgb(255, 120, 120);
+    border-color: rgb(255, 120, 120);
+}
+
+.prompt-btn-danger:hover {
+    background-color: rgb(60, 24, 24);
+    color: rgb(255, 180, 180);
+}
+
+.prompt-btn-danger:active {
+    background-color: rgb(255, 120, 120);
+    color: rgb(8, 12, 8);
+}
+
+/* Player list item */
+.player-list-item {
+    flex-direction: row;
+    align-items: center;
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    background-color: rgb(16, 22, 16);
+    border-left-width: 3px;
+    border-left-color: rgb(60, 200, 120);
+    min-height: 44px;
+}
+
+.player-list-item.-host {
+    border-left-color: rgb(255, 210, 80);
+}
+
+.player-name {
+    flex-grow: 1;
+    color: rgb(200, 230, 200);
+    font-size: 18px;
+}
+
+.player-badge {
+    color: rgb(120, 160, 130);
+    font-size: 14px;
+    margin-left: 10px;
+    padding: 3px 8px;
+    background-color: rgb(22, 30, 22);
+    -unity-font-style: bold;
+}
+
+.player-badge-host {
+    color: rgb(255, 210, 80);
+}
+
+.player-badge-cpu {
+    color: rgb(140, 180, 220);
+}

@@ -1,0 +1,169 @@
+/* Protocol Singularity - Terminal base style */
+/* コマンドプロンプト風の基本配色とコンポーネントスタイル（モバイル考慮して可読性重視） */
+
+:root {
+    --ps-bg: rgb(8, 12, 8);
+    --ps-bg-panel: rgb(14, 20, 14);
+    --ps-bg-input: rgb(20, 28, 20);
+    --ps-fg: rgb(200, 230, 200);
+    --ps-fg-dim: rgb(120, 160, 130);
+    --ps-accent: rgb(80, 255, 170);
+    --ps-accent-dim: rgb(60, 200, 120);
+    --ps-error: rgb(255, 80, 80);
+    --ps-warn: rgb(255, 210, 80);
+}
+
+.terminal-root {
+    background-color: var(--ps-bg);
+    color: var(--ps-fg);
+    flex-grow: 1;
+    padding: 40px 56px;
+}
+
+.terminal-header {
+    margin-bottom: 28px;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--ps-accent-dim);
+    padding-bottom: 16px;
+}
+
+.title-text {
+    font-size: 44px;
+    color: var(--ps-accent);
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+    white-space: normal;
+}
+
+.subtitle-text {
+    font-size: 18px;
+    color: var(--ps-fg-dim);
+    margin-top: 6px;
+}
+
+.terminal-panel {
+    background-color: var(--ps-bg-panel);
+    border-width: 1px;
+    border-color: var(--ps-accent-dim);
+    padding: 20px 24px;
+    margin-bottom: 14px;
+}
+
+.label {
+    color: var(--ps-fg);
+    margin: 4px 0;
+    font-size: 18px;
+    white-space: normal;
+}
+
+.label-accent {
+    color: var(--ps-accent);
+    -unity-font-style: bold;
+    margin-bottom: 10px;
+    font-size: 20px;
+}
+
+.label-dim {
+    color: var(--ps-fg-dim);
+    font-size: 15px;
+}
+
+.input > .unity-base-text-field__input {
+    background-color: var(--ps-bg-input);
+    color: var(--ps-fg);
+    border-width: 1px;
+    border-color: var(--ps-accent-dim);
+    padding: 12px 14px;
+    font-size: 20px;
+    min-height: 44px;
+}
+
+.input > .unity-base-text-field__input:focus {
+    border-color: var(--ps-accent);
+}
+
+.prompt-btn {
+    background-color: var(--ps-bg-panel);
+    color: var(--ps-accent);
+    border-width: 1px;
+    border-color: var(--ps-accent);
+    padding: 14px 28px;
+    margin: 6px 0;
+    font-size: 20px;
+    -unity-font-style: bold;
+    min-height: 48px;
+}
+
+.prompt-btn:hover {
+    background-color: rgb(24, 48, 32);
+    color: rgb(160, 255, 210);
+}
+
+.prompt-btn:active {
+    background-color: var(--ps-accent);
+    color: var(--ps-bg);
+}
+
+.prompt-btn:disabled {
+    color: var(--ps-fg-dim);
+    border-color: var(--ps-fg-dim);
+    opacity: 0.6;
+}
+
+.prompt-btn-small {
+    padding: 8px 14px;
+    min-height: 36px;
+    font-size: 16px;
+    margin: 0;
+}
+
+.status-line {
+    margin-top: 20px;
+    color: var(--ps-fg-dim);
+    font-size: 16px;
+    white-space: normal;
+    min-height: 36px;
+}
+
+.status-line.-error {
+    color: var(--ps-error);
+}
+
+.status-line.-warn {
+    color: var(--ps-warn);
+}
+
+.section-columns {
+    flex-direction: row;
+    margin-top: 10px;
+}
+
+.column {
+    flex-grow: 1;
+    margin-right: 10px;
+    margin-left: 10px;
+}
+
+/* Shared modal overlay styles (used by title Rules dialog, lobby Menu / Role Editor). */
+.menu-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.72);
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-dialog {
+    background-color: var(--ps-bg-panel);
+    border-width: 1px;
+    border-color: var(--ps-accent);
+    padding: 24px 32px;
+    min-width: 380px;
+    max-width: 520px;
+}
+
+.menu-title {
+    font-size: 24px;
+    margin-bottom: 16px;
+    -unity-text-align: middle-center;
+}

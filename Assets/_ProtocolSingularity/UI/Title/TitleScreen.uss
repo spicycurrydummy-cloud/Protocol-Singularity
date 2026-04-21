@@ -1,0 +1,104 @@
+/* Protocol Singularity - Title specific styles */
+
+.title-body {
+    align-items: stretch;
+}
+
+.title-left-col,
+.title-right-col {
+    flex-basis: 0;
+}
+
+.session-list-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+/* .prompt-btn-small is now defined in Shared/Terminal.uss */
+
+.refresh-btn {
+    min-width: 48px;
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 18px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.session-list {
+    min-height: 140px;
+    max-height: 280px;
+    margin-bottom: 8px;
+}
+
+.session-list-item {
+    flex-direction: row;
+    align-items: center;
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    background-color: rgb(16, 22, 16);
+    border-left-width: 3px;
+    border-left-color: rgb(60, 200, 120);
+    min-height: 44px;
+}
+
+.session-item-code {
+    color: rgb(200, 230, 200);
+    font-size: 20px;
+    -unity-font-style: bold;
+    letter-spacing: 2px;
+    min-width: 140px;
+}
+
+.session-item-info {
+    color: rgb(120, 160, 130);
+    font-size: 16px;
+    flex-grow: 1;
+}
+
+.session-item-btn {
+    min-height: 40px;
+    padding: 8px 20px;
+    margin: 0;
+}
+
+/* Title header: title text on the left + RULES button on the right. */
+.title-header-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.title-header-title {
+    flex-grow: 1;
+}
+
+.rules-btn {
+    min-height: 40px;
+    padding: 8px 16px;
+    margin: 0 0 0 12px;
+}
+
+/* Rules modal */
+.rules-dialog {
+    min-width: 640px;
+    max-width: 820px;
+    max-height: 84%;
+}
+
+.rules-scroll {
+    min-height: 400px;
+    max-height: 560px;
+    margin-bottom: 14px;
+    padding: 6px 8px;
+    background-color: rgb(10, 16, 10);
+}
+
+.rules-body {
+    font-size: 15px;
+    color: rgb(200, 230, 200);
+    white-space: normal;
+    margin: 0;
+}

@@ -1,0 +1,7 @@
+{
+  "_comment": "Protocol Singularity - Inception Labs Mercury 2 API credentials. Copy this file to 'mercury2-config.json' and fill in your local values. CI/CD should generate the real file from GitHub Secrets at build time.",
+  "apiKey": "REPLACE_WITH_YOUR_API_KEY",
+  "endpoint": "https://api.inceptionlabs.ai/v1",
+  "timeoutSeconds": 30,
+  "model": "mercury-2"
+}

@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement class="session-list-item">
+        <ui:Label name="session-code" text="CODE" class="session-item-code" />
+        <ui:Label name="session-info" text="0/10" class="session-item-info" />
+        <ui:Button name="session-join-btn" text="[ JOIN ]" class="prompt-btn session-item-btn" />
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,56 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/_ProtocolSingularity/UI/Shared/Terminal.uss" />
+    <Style src="project://database/Assets/_ProtocolSingularity/UI/Title/TitleScreen.uss" />
+    <ui:VisualElement class="terminal-root">
+        <ui:VisualElement class="terminal-header">
+            <ui:VisualElement class="title-header-row">
+                <ui:Label text="PROTOCOL_SINGULARITY.exe" class="title-text title-header-title" />
+                <ui:Button name="rules-btn" text="[ ? RULES ]" class="prompt-btn prompt-btn-small rules-btn" />
+            </ui:VisualElement>
+            <ui:Label text="&gt; OVERMIND // INFILTRATION TERMINAL v0.1" class="subtitle-text" />
+            <ui:Label text="&gt; unauthorized access will be logged and overridden." class="subtitle-text" />
+        </ui:VisualElement>
+
+        <ui:VisualElement class="section-columns title-body">
+            <!-- Left: operator handle + create new session -->
+            <ui:VisualElement class="terminal-panel column title-left-col">
+                <ui:Label text="&gt; OPERATOR HANDLE" class="label label-accent" />
+                <ui:TextField name="name-input" max-length="16" class="input" />
+                <ui:Label text="未入力の場合 OPERATOR_XXX が自動採番されます (最大16文字)" class="label label-dim" />
+
+                <ui:Label text="&gt;&gt; BOOT NEW SESSION" class="label label-accent setting-label" />
+                <ui:Label text="上記ハンドル名でホストとしてセッションを起動します" class="label label-dim" />
+                <ui:Button name="create-btn" text="[ BOOT SESSION ]" class="prompt-btn" />
+            </ui:VisualElement>
+
+            <!-- Right: active session list + code-based join -->
+            <ui:VisualElement class="terminal-panel column title-right-col">
+                <ui:VisualElement class="session-list-header">
+                    <ui:Label text="&gt;&gt; ACTIVE SESSIONS" class="label label-accent" />
+                    <ui:Button name="refresh-btn" text="[ ↻ ]" class="prompt-btn prompt-btn-small refresh-btn" tooltip="Refresh" />
+                </ui:VisualElement>
+                <ui:ScrollView name="session-list" class="session-list" />
+                <ui:Label name="session-list-empty" text="&gt; scanning..." class="label label-dim" />
+
+                <ui:Label text="&gt;&gt; ENTER BY CODE" class="label label-accent setting-label" />
+                <ui:TextField name="code-input" max-length="8" class="input" />
+                <ui:Button name="join-btn" text="[ CONNECT ]" class="prompt-btn" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:Label name="status-line" text="&gt; READY." class="status-line" />
+
+        <!-- ============================= -->
+        <!-- Rules overlay (modal)          -->
+        <!-- ============================= -->
+        <ui:VisualElement name="rules-overlay" class="menu-overlay" style="display: none;">
+            <ui:VisualElement name="rules-dialog" class="menu-dialog rules-dialog">
+                <ui:Label text="// PROTOCOL SINGULARITY — RULES" class="label label-accent menu-title" />
+                <ui:ScrollView name="rules-scroll" class="rules-scroll">
+                    <ui:Label name="rules-body" text="" class="label rules-body" />
+                </ui:ScrollView>
+                <ui:Button name="rules-close-btn" text="[ CLOSE ]" class="prompt-btn" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

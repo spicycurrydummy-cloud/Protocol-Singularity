@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement class="player-list-item">
+        <ui:Label name="player-name" text="Player" class="player-name" />
+        <ui:Label name="host-badge" text="[HOST]" class="player-badge player-badge-host" />
+        <ui:Label name="cpu-badge" text="[CPU]" class="player-badge player-badge-cpu" />
+    </ui:VisualElement>
+</ui:UXML>
