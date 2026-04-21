@@ -486,6 +486,24 @@
     max-height: 78%;
 }
 
+/* OVERRIDE 議論フェーズ中だけダイアログ全体を赤テーマに切替える。
+   LobbyController.UpdateOverrideDiscussionUi() で -danger-active を付与、
+   HideAllPhaseSections() で除去する。 */
+.phase-popup-dialog.-danger-active {
+    background-color: rgb(24, 10, 10);
+    border-color: rgb(255, 80, 80);
+}
+.phase-popup-dialog.-danger-active .label {
+    color: rgb(255, 170, 170);
+}
+.phase-popup-dialog.-danger-active .label-accent {
+    color: rgb(255, 100, 100);
+}
+.phase-popup-dialog.-danger-active .result-headline {
+    color: rgb(255, 90, 90);
+    white-space: normal;
+}
+
 .phase-popup-minimize-btn {
     align-self: flex-end;
     min-width: 56px;

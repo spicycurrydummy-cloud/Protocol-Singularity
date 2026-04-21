@@ -165,9 +165,9 @@
                 </ui:VisualElement>
 
                 <!-- Override Discussion -->
-                <ui:VisualElement name="override-discussion-section" class="phase-section" style="display: none;">
+                <ui:VisualElement name="override-discussion-section" class="phase-section -danger" style="display: none;">
                     <ui:Label text="&gt;&gt; OVERRIDE 議論" class="label label-accent" />
-                    <ui:Label name="override-discussion-headline" text="MOTHER CORE PROTECTION LIFTED" class="label result-headline" />
+                    <ui:Label name="override-discussion-headline" text="【危険】MOTHER CORE の暗号プロテクト無効化を確認。逆探知による侵入プロトコルを緊急実行。" class="label result-headline" />
                     <ui:Label name="override-discussion-instruction" text="" class="label" />
                 </ui:VisualElement>
 

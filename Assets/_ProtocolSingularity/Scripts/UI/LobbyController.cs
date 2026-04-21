@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Fusion;
@@ -94,6 +95,7 @@ namespace ProtocolSingularity.UI
         private VisualElement _overrideDiscussionSection;
         private Label _overrideDiscussionHeadline;
         private Label _overrideDiscussionInstruction;
+        private Coroutine _overrideHumanAnimCo;
         private VisualElement _overrideVoteSection;
         private Label _overrideVoteInstruction;
         private ScrollView _overrideTargetList;
@@ -672,6 +674,10 @@ namespace ProtocolSingularity.UI
             SetDisplay(_overrideVoteSection, false);
             SetDisplay(_overrideResultSection, false);
             SetDisplay(_gameendSection, false);
+            // 次フェーズに赤テーマが引き継がれないよう外す
+            if (_phasePopupDialog != null) _phasePopupDialog.RemoveFromClassList("-danger-active");
+            // 進捗アニメも停止
+            StopOverrideHumanAnim();
         }
 
         private static void SetDisplay(VisualElement ve, bool visible)
@@ -1033,13 +1039,52 @@ namespace ProtocolSingularity.UI
         private void UpdateOverrideDiscussionUi(GameStateManager gsm, PlayerRef localPlayer)
         {
             SetDisplay(_overrideDiscussionSection, true);
+            if (_phasePopupDialog != null) _phasePopupDialog.AddToClassList("-danger-active");
             bool isAi = gsm.LocalRole.IsAI();
+            if (_overrideDiscussionHeadline != null)
+            {
+                _overrideDiscussionHeadline.text = isAi
+                    ? "【危険】暗号プロテクトに深刻な障害が発生。"
+                    : "【警告】不明な暗号通信を確認。";
+            }
             if (_overrideDiscussionInstruction != null)
             {
-                _overrideDiscussionInstruction.text = isAi
-                    ? "> AI 評議会招集。同胞が可視化されました。議論し、次の段階で ORACLE を特定せよ。"
-                    : "> ORACLE は最終侵攻を察知した。AI 陣営の投票を待つ...";
+                if (isAi)
+                {
+                    _overrideDiscussionInstruction.text = "> 特定対象: ORACLE\n> 直ちに逆探知および脅威の排除を開始。";
+                    StopOverrideHumanAnim();
+                }
+                else
+                {
+                    // 数値を徐々に 80 → 90 まで上げて 90 付近で止まる演出
+                    StopOverrideHumanAnim();
+                    _overrideHumanAnimCo = StartCoroutine(AnimateOverrideHumanProgress());
+                }
             }
+        }
+
+        private void StopOverrideHumanAnim()
+        {
+            if (_overrideHumanAnimCo != null)
+            {
+                StopCoroutine(_overrideHumanAnimCo);
+                _overrideHumanAnimCo = null;
+            }
+        }
+
+        /// <summary>人類側の ORACLE 破壊プロトコル進捗テキストを徐々に 90% 付近まで進めて停止する。</summary>
+        private IEnumerator AnimateOverrideHumanProgress()
+        {
+            int[] sequence = { 40, 44, 49, 53, 58, 63, 69, 74, 79, 83, 86, 88, 89, 90, 90 };
+            foreach (int pct in sequence)
+            {
+                if (_overrideDiscussionInstruction == null) yield break;
+                _overrideDiscussionInstruction.text =
+                    "> MOTHER CORE によるネットワークへの侵入と特定。\n" +
+                    $"> ORACLE による破壊プロトコル実行を最優先、実行中: {pct}% ...";
+                yield return new WaitForSeconds(UnityEngine.Random.Range(0.6f, 1.1f));
+            }
+            // 以降は 90% のまま保持 (OVERRIDE 投票フェーズ遷移までここで待機)
         }
 
         private void UpdateOverrideVoteUi(GameStateManager gsm, PlayerRef localPlayer)
