@@ -374,7 +374,7 @@ namespace ProtocolSingularity.Networking
                 Team = team, Votes = votes, Approved = approved
             });
 
-            LogEvent($"[VOTE] R{Round} {(approved ? "APPROVED" : "REJECTED")} (Y:{yes} N:{no})");
+            LogEvent($"[VOTE] R{Round} {(approved ? "承認" : "却下")} ({yes} 対 {no})");
             LogVoteBreakdown("Y", votes, true);
             LogVoteBreakdown("N", votes, false);
 

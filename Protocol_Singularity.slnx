@@ -2,4 +2,5 @@
   <Project Path="Fusion.Unity.Editor.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Fusion.Unity.csproj" />
+  <Project Path="Unity.Fusion.CodeGen.csproj" />
 </Solution>

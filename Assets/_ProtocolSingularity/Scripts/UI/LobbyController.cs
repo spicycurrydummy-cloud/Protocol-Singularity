@@ -112,6 +112,10 @@ namespace ProtocolSingularity.UI
         // Menu
         private Button _menuBtn;
         private VisualElement _menuOverlay;
+        private Button _menuRulesBtn;
+        private VisualElement _rulesOverlay;
+        private Label _rulesBody;
+        private Button _rulesCloseBtn;
         private VisualElement _menuDialog;
         private Button _menuCloseBtn;
         private Button _menuLeaveBtn;
@@ -195,7 +199,9 @@ namespace ProtocolSingularity.UI
             if (_gameendReturnBtn != null) _gameendReturnBtn.clicked -= OnGameEndReturnClicked;
             if (_menuBtn != null) _menuBtn.clicked -= OpenMenu;
             if (_menuCloseBtn != null) _menuCloseBtn.clicked -= CloseMenu;
+            if (_menuRulesBtn != null) _menuRulesBtn.clicked -= OpenRulesFromMenu;
             if (_menuLeaveBtn != null) _menuLeaveBtn.clicked -= OnLeaveClicked;
+            if (_rulesCloseBtn != null) _rulesCloseBtn.clicked -= CloseRules;
             if (_roleEditBtn != null) _roleEditBtn.clicked -= OpenRoleEditor;
             if (_roleEditorCloseBtn != null) _roleEditorCloseBtn.clicked -= CloseRoleEditor;
             if (_menuOverlay != null) _menuOverlay.UnregisterCallback<ClickEvent>(OnOverlayClicked);
@@ -318,7 +324,16 @@ namespace ProtocolSingularity.UI
             _menuOverlay = root.Q<VisualElement>("menu-overlay");
             _menuDialog = root.Q<VisualElement>("menu-dialog");
             _menuCloseBtn = root.Q<Button>("menu-close-btn");
+            _menuRulesBtn = root.Q<Button>("menu-rules-btn");
             _menuLeaveBtn = root.Q<Button>("menu-leave-btn");
+            _rulesOverlay = root.Q<VisualElement>("rules-overlay");
+            _rulesBody = root.Q<Label>("rules-body");
+            _rulesCloseBtn = root.Q<Button>("rules-close-btn");
+            if (_rulesBody != null)
+            {
+                _rulesBody.enableRichText = true;
+                _rulesBody.text = RulesText.Body;
+            }
 
             _chatLog = root.Q<ScrollView>("chat-log");
             _chatInput = root.Q<TextField>("chat-input");
@@ -345,8 +360,11 @@ namespace ProtocolSingularity.UI
             if (_gameendReturnBtn != null) _gameendReturnBtn.clicked += OnGameEndReturnClicked;
             if (_menuBtn != null) _menuBtn.clicked += OpenMenu;
             if (_menuCloseBtn != null) _menuCloseBtn.clicked += CloseMenu;
+            if (_menuRulesBtn != null) _menuRulesBtn.clicked += OpenRulesFromMenu;
             if (_menuLeaveBtn != null) _menuLeaveBtn.clicked += OnLeaveClicked;
             if (_menuOverlay != null) _menuOverlay.RegisterCallback<ClickEvent>(OnOverlayClicked);
+            if (_rulesCloseBtn != null) _rulesCloseBtn.clicked += CloseRules;
+            if (_rulesOverlay != null) _rulesOverlay.RegisterCallback<ClickEvent>(evt => { if (evt.target == _rulesOverlay) CloseRules(); });
 
             _playerCountSlider.RegisterValueChangedCallback(evt =>
             {
@@ -432,10 +450,25 @@ namespace ProtocolSingularity.UI
                 _roleLineupCompact.text = sb.ToString();
             }
 
-            string summaryText = opCount < 0
-                ? $"! Too many AI roles ({-opCount} over). Disable one to continue."
-                : $"Humans {human} : AI {ai}";
-            bool isError = opCount < 0;
+            // AI 陣営が人類以上 = 5 連続否決で AI が勝つため人類は勝利不可能。
+            bool unwinnable = ai >= human;
+            string summaryText;
+            bool isError;
+            if (opCount < 0)
+            {
+                summaryText = $"! AI 役職が多すぎて枠に入りません ({-opCount} 人オーバー)。オフにしてください";
+                isError = true;
+            }
+            else if (unwinnable)
+            {
+                summaryText = $"! AI 陣営が多すぎます (人類 {human} : AI {ai})。AI 役職を減らしてください (人類 > AI が必須)";
+                isError = true;
+            }
+            else
+            {
+                summaryText = $"Humans {human} : AI {ai}";
+                isError = false;
+            }
 
             if (_roleLineupSummary != null)
             {
@@ -473,7 +506,7 @@ namespace ProtocolSingularity.UI
             if (!host && _roleEditorOverlay != null)
                 _roleEditorOverlay.style.display = DisplayStyle.None;
 
-            if (_startBtn != null) _startBtn.SetEnabled(host && opCount >= 0);
+            if (_startBtn != null) _startBtn.SetEnabled(host && opCount >= 0 && !unwinnable);
         }
 
         private VisualElement BuildRoleRow(string name, int count, bool isAi, bool fixedRole, bool enabled,
@@ -533,6 +566,16 @@ namespace ProtocolSingularity.UI
         private void OpenMenu() { if (_menuOverlay != null) _menuOverlay.style.display = DisplayStyle.Flex; }
         private void CloseMenu() { if (_menuOverlay != null) _menuOverlay.style.display = DisplayStyle.None; }
         private void OnOverlayClicked(ClickEvent evt) { if (evt.target == _menuOverlay) CloseMenu(); }
+
+        private void OpenRulesFromMenu()
+        {
+            CloseMenu();
+            if (_rulesOverlay != null) _rulesOverlay.style.display = DisplayStyle.Flex;
+        }
+        private void CloseRules()
+        {
+            if (_rulesOverlay != null) _rulesOverlay.style.display = DisplayStyle.None;
+        }
 
         // ==========================================================
         // Session lifecycle
@@ -614,7 +657,7 @@ namespace ProtocolSingularity.UI
             if (_countersLabel != null)
                 _countersLabel.text = $"SUCCESS: {gsm.SuccessCount}/{GameStateManager.RequiredHackSuccess} / FAIL: {gsm.FailureCount}/{GameStateManager.RequiredHackFailure} / REJECT: {gsm.ConsecutiveRejections}/{GameStateManager.MaxConsecutiveRejections}";
             if (_leaderLabel != null)
-                _leaderLabel.text = $"LEADER: {ResolvePlayerName(gsm.CurrentLeader)}";
+                _leaderLabel.text = $"提案者: {ResolvePlayerName(gsm.CurrentLeader)}";
 
             UpdateRoleDisplay();
             RefreshIngamePlayerList();
@@ -711,7 +754,7 @@ namespace ProtocolSingularity.UI
                     : string.Empty;
                 if (isLeader)
                 {
-                    _teamProposalInstruction.text = $"> あなたが <b>LEADER</b> です。<b>{gsm.TeamSize}名</b>を選んで提案してください。{failClause}";
+                    _teamProposalInstruction.text = $"> あなたが <b>提案者</b> です。<b>{gsm.TeamSize}名</b>を選んで提案してください。{failClause}";
                 }
                 else
                 {
@@ -719,7 +762,7 @@ namespace ProtocolSingularity.UI
                     // "待機中" が一目で分かるメッセージのみを表示する。
                     var leaderColored = ResolveColoredPlayerName(gsm.CurrentLeader);
                     _teamProposalInstruction.text =
-                        $"<size=20>&gt; <b>{leaderColored}</b> がハッキングチームを計画中...</size>\n" +
+                        $"<size=20>> <b>{leaderColored}</b> がハッキングチームを計画中...</size>\n" +
                         $"<size=14>　チーム枠: {gsm.TeamSize}名</size>{failClause}";
                 }
             }
@@ -823,7 +866,7 @@ namespace ProtocolSingularity.UI
             if (_voteProposalDisplay != null)
             {
                 var sb = new System.Text.StringBuilder();
-                sb.Append("> LEADER: ").Append(ResolveColoredPlayerName(gsm.CurrentLeader)).Append('\n');
+                sb.Append("> 提案者: ").Append(ResolveColoredPlayerName(gsm.CurrentLeader)).Append('\n');
                 sb.Append("> PROPOSED TEAM: ");
                 for (int i = 0; i < gsm.ProposedTeamCount; i++)
                 {
@@ -873,11 +916,11 @@ namespace ProtocolSingularity.UI
             }
             bool approved = yes > no;
             string headline = approved
-                ? $"<color=#50FFAA>APPROVED</color> (Y:{yes} / N:{no})"
-                : $"<color=#FF7878>REJECTED</color> (Y:{yes} / N:{no})";
+                ? $"<color=#50FFAA>承認</color> ({yes} 対 {no})"
+                : $"<color=#FF7878>却下</color> ({yes} 対 {no})";
             var sb = new System.Text.StringBuilder(headline);
-            sb.Append('\n').Append("<color=#50FFAA>Y</color>: ").Append(yes == 0 ? "-" : yesList.ToString());
-            sb.Append('\n').Append("<color=#FF7878>N</color>: ").Append(no == 0 ? "-" : noList.ToString());
+            sb.Append('\n').Append("<color=#50FFAA>承認</color>: ").Append(yes == 0 ? "-" : yesList.ToString());
+            sb.Append('\n').Append("<color=#FF7878>却下</color>: ").Append(no == 0 ? "-" : noList.ToString());
             return sb.ToString();
         }
 
@@ -909,7 +952,7 @@ namespace ProtocolSingularity.UI
             if (gsm == null || _sm == null || _sm.Runner == null) return;
             if (gsm.Phase != GamePhase.ApprovalVote) return;
             gsm.Rpc_SubmitVote(_sm.Runner.LocalPlayer, approve);
-            SetStatus(approve ? "> VOTE: APPROVE." : "> VOTE: REJECT.");
+            SetStatus(approve ? "> 投票: 承認" : "> 投票: 却下");
         }
 
         // ==========================================================
@@ -1163,7 +1206,7 @@ namespace ProtocolSingularity.UI
             {
                 bool isHost = _sm != null && _sm.IsHost;
                 _gameendReturnBtn.SetEnabled(isHost);
-                _gameendReturnBtn.text = isHost ? "[ RETURN TO LOBBY ]" : "[ WAITING FOR HOST ]";
+                _gameendReturnBtn.text = isHost ? "[ ロビーへ戻る ]" : "[ ホスト待機中... ]";
             }
         }
 
@@ -1243,17 +1286,17 @@ namespace ProtocolSingularity.UI
             string faction = role.IsAI() ? "AI 陣営" : "人類陣営";
             string desc = role switch
             {
-                RoleType.Oracle     => "全員の陣営を識別 (CIPHER は盲点)",
-                RoleType.Admin      => "ORACLE と MC の区別がつかない",
-                RoleType.Operator   => "能力なし。推理で AI を見抜く",
-                RoleType.MotherCore => "AI のリーダー。OVERRIDE を主導",
-                RoleType.Agent      => "標準 AI。NOISE 混入で妨害",
-                RoleType.Cipher     => "ORACLE から隠された AI",
-                RoleType.Drone      => "2 ハック終了後に AI として覚醒",
-                RoleType.Radical    => "孤立 AI。OVERRIDE 時のみ他 AI と合流",
+                RoleType.Oracle     => "全員の陣営を識別できる\nただし CIPHER だけは盲点",
+                RoleType.Admin      => "ORACLE と MC の両方が Oracle に見える\n本物が見分けられない",
+                RoleType.Operator   => "特殊能力なし\n推理と議論で AI を見抜く",
+                RoleType.MotherCore => "AI 陣営のリーダー\nOVERRIDE フェーズを主導する",
+                RoleType.Agent      => "標準 AI\nNOISE 混入でハックを妨害",
+                RoleType.Cipher     => "ORACLE の索引から除外された暗号化 AI\nORACLE から Operator と誤認される",
+                RoleType.Drone      => "序盤は自分を Operator と誤認\n2 ハック終了後に AI として覚醒",
+                RoleType.Radical    => "孤立した急進派 AI\nOVERRIDE 時のみ他 AI と合流",
                 _                   => "",
             };
-            return $"&gt; {faction}\n&gt; {desc}";
+            return $"{faction}\n{desc}";
         }
 
         private string ResolveColoredPlayerName(PlayerRef pr)
@@ -1337,7 +1380,7 @@ namespace ProtocolSingularity.UI
 
             var head = new VisualElement();
             head.AddToClassList("hack-log-head");
-            var rLbl = new Label($"R{r.Round}  LEADER: {ResolveColoredPlayerName(r.Leader)}");
+            var rLbl = new Label($"R{r.Round}  提案者: {ResolveColoredPlayerName(r.Leader)}");
             rLbl.enableRichText = true;
             rLbl.AddToClassList("hack-log-round");
             head.Add(rLbl);
@@ -1667,8 +1710,8 @@ namespace ProtocolSingularity.UI
             else if (text.StartsWith("[VOTE]"))
             {
                 lbl.AddToClassList("-tag-vote");
-                if (text.Contains("APPROVED")) lbl.AddToClassList("-hack-success");
-                else if (text.Contains("REJECTED")) lbl.AddToClassList("-hack-fail");
+                if (text.Contains("承認")) lbl.AddToClassList("-hack-success");
+                else if (text.Contains("却下")) lbl.AddToClassList("-hack-fail");
             }
             else if (text.StartsWith("[HACK]"))
             {

@@ -14,11 +14,11 @@
         <ui:VisualElement class="section-columns title-body">
             <!-- Left: operator handle + create new session -->
             <ui:VisualElement class="terminal-panel column title-left-col">
-                <ui:Label text="&gt; OPERATOR HANDLE" class="label label-accent" />
+                <ui:Label text="&gt; オペレーター名" class="label label-accent" />
                 <ui:TextField name="name-input" max-length="16" class="input" />
                 <ui:Label text="未入力の場合 OPERATOR_XXX が自動採番されます (最大16文字)" class="label label-dim" />
 
-                <ui:Label text="&gt;&gt; BOOT NEW SESSION" class="label label-accent setting-label" />
+                <ui:Label text="&gt;&gt; 新規セッションの作成" class="label label-accent setting-label" />
                 <ui:Label text="上記ハンドル名でホストとしてセッションを起動します" class="label label-dim" />
                 <ui:Button name="create-btn" text="[ BOOT SESSION ]" class="prompt-btn" />
             </ui:VisualElement>
@@ -26,13 +26,13 @@
             <!-- Right: active session list + code-based join -->
             <ui:VisualElement class="terminal-panel column title-right-col">
                 <ui:VisualElement class="session-list-header">
-                    <ui:Label text="&gt;&gt; ACTIVE SESSIONS" class="label label-accent" />
+                    <ui:Label text="&gt;&gt; セッション一覧" class="label label-accent" />
                     <ui:Button name="refresh-btn" text="[ SCAN ]" class="prompt-btn prompt-btn-small refresh-btn" tooltip="Refresh" />
                 </ui:VisualElement>
                 <ui:ScrollView name="session-list" class="session-list" />
                 <ui:Label name="session-list-empty" text="&gt; scanning..." class="label label-dim" />
 
-                <ui:Label text="&gt;&gt; ENTER BY CODE" class="label label-accent setting-label" />
+                <ui:Label text="&gt;&gt; 指定セッションへ参加" class="label label-accent setting-label" />
                 <ui:TextField name="code-input" max-length="8" class="input" />
                 <ui:Button name="join-btn" text="[ CONNECT ]" class="prompt-btn" />
             </ui:VisualElement>

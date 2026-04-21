@@ -10,7 +10,7 @@
                 </ui:VisualElement>
                 <ui:VisualElement class="session-header-sub">
                     <ui:Label name="scene-subtitle" text="&gt; awaiting operator connections..." class="subtitle-text" />
-                    <ui:Toggle name="lock-toggle" text="Lock session (hide from public list)" value="false" class="lobby-toggle lock-toggle-inline" />
+                    <ui:Toggle name="lock-toggle" text="セッションの非表示" value="false" class="lobby-toggle lock-toggle-inline" />
                 </ui:VisualElement>
             </ui:VisualElement>
             <ui:Button name="menu-btn" text="MENU" class="menu-btn" tooltip="Menu" />
@@ -25,30 +25,30 @@
         <ui:VisualElement name="lobby-phase-content" class="phase-content">
             <ui:VisualElement class="section-columns">
                 <ui:VisualElement class="terminal-panel column lobby-players">
-                    <ui:Label text="&gt;&gt; CONNECTED OPERATORS" class="label label-accent" />
+                    <ui:Label text="&gt;&gt; 参加オペレーター" class="label label-accent" />
                     <ui:ScrollView name="player-list" class="player-list" />
                     <ui:Label name="player-count-line" text="[ 0 / 10 ]" class="label label-dim" />
                 </ui:VisualElement>
 
                 <ui:VisualElement name="host-settings-panel" class="terminal-panel column lobby-settings">
-                    <ui:Label text="&gt;&gt; HOST CONFIG" class="label label-accent" />
+                    <ui:Label text="&gt;&gt; ゲーム設定" class="label label-accent" />
 
-                    <ui:Label text="&gt; TARGET PLAYER COUNT" class="label" />
+                    <ui:Label text="&gt; プレイヤー数" class="label" />
                     <ui:SliderInt name="player-count-slider" low-value="6" high-value="10" value="6" show-input-field="true" />
 
-                    <ui:Label text="&gt; DISCUSSION TIME (sec)" class="label setting-label" />
+                    <ui:Label text="&gt; ディスカッション時間 (秒)" class="label setting-label" />
                     <ui:SliderInt name="discussion-slider" low-value="30" high-value="180" value="60" show-input-field="true" />
 
-                    <ui:Label text="&gt; VOTE TIME (sec)" class="label setting-label" />
+                    <ui:Label text="&gt; 投票時間 (秒)" class="label setting-label" />
                     <ui:SliderInt name="vote-slider" low-value="15" high-value="90" value="30" show-input-field="true" />
 
-                    <ui:Label text="&gt; HACK TIME (sec)" class="label setting-label" />
+                    <ui:Label text="&gt; ハッキング時間 (秒)" class="label setting-label" />
                     <ui:SliderInt name="hack-slider" low-value="15" high-value="60" value="30" show-input-field="true" />
 
-                    <ui:Toggle name="cpu-fill-toggle" text="Enable CPU fill (Mercury2)" value="true" class="lobby-toggle" />
+                    <ui:Toggle name="cpu-fill-toggle" text="CPU オペレーターを補充" value="true" class="lobby-toggle" />
 
                     <ui:VisualElement name="role-lineup-panel" class="role-lineup-panel">
-                        <ui:Label text="&gt; ROLES" class="label label-accent" />
+                        <ui:Label text="&gt; ロール管理" class="label label-accent" />
                         <ui:Label name="role-lineup-compact" text="" class="label label-dim" />
                         <ui:Label name="role-lineup-summary" text="" class="label label-dim" />
                         <ui:Button name="role-edit-btn" text="[ EDIT ]" class="prompt-btn prompt-btn-small" />
@@ -68,27 +68,27 @@
             <ui:VisualElement class="section-columns ingame-columns">
                 <ui:VisualElement class="ingame-left-column">
                     <ui:VisualElement class="terminal-panel">
-                        <ui:Label text="&gt;&gt; YOUR ROLE" class="label label-accent" />
+                        <ui:Label text="あなたのロール" class="label label-accent" />
                         <ui:Label name="ingame-role-label" text="..." class="label role-label" />
                         <ui:Label name="ingame-faction-label" text="..." class="label label-dim" />
                     </ui:VisualElement>
                     <ui:VisualElement class="terminal-panel">
-                        <ui:Label text="&gt;&gt; OPERATORS" class="label label-accent" />
+                        <ui:Label text="オペレータ一覧" class="label label-accent" />
                         <ui:ScrollView name="ingame-player-list" class="player-list" />
                     </ui:VisualElement>
                 </ui:VisualElement>
 
                 <ui:VisualElement class="ingame-center-column">
                     <ui:VisualElement class="terminal-panel ingame-status-panel">
-                        <ui:Label text="&gt;&gt; INFILTRATION STATUS" class="label label-accent" />
+                        <ui:Label text="進捗状況" class="label label-accent" />
                         <ui:Label name="ingame-phase-label" text="PHASE: -" class="label" />
                         <ui:Label name="ingame-round-label" text="ROUND: -" class="label" />
                         <ui:Label name="ingame-counters-label" text="SUCCESS: 0 / FAIL: 0 / REJECT: 0" class="label" />
-                        <ui:Label name="ingame-leader-label" text="LEADER: -" class="label" />
+                        <ui:Label name="ingame-leader-label" text="提案者: -" class="label" />
                     </ui:VisualElement>
 
                     <ui:VisualElement class="terminal-panel ingame-hack-panel">
-                        <ui:Label text="&gt;&gt; HACK LOG" class="label label-accent" />
+                        <ui:Label text="ハッキング結果" class="label label-accent" />
                         <ui:Label name="hack-log-empty" text="&gt; no hack attempts yet..." class="label label-dim" />
                         <ui:ScrollView name="hack-log-list" class="hack-log-list" />
                     </ui:VisualElement>
@@ -103,7 +103,7 @@
         <!-- ============================= -->
         <ui:VisualElement name="chat-column" class="chat-column">
             <ui:VisualElement name="chat-panel" class="chat-panel">
-                <ui:Label text="&gt;&gt; COMM CHANNEL" class="label label-accent" />
+                <ui:Label text="チャット欄" class="label label-accent" />
                 <ui:ScrollView name="chat-log" class="chat-log" />
             </ui:VisualElement>
             <ui:VisualElement name="chat-composer" class="chat-composer">
@@ -129,78 +129,78 @@
                 <ui:Button name="phase-popup-minimize-btn" text="[ v ]" class="prompt-btn phase-popup-minimize-btn" tooltip="Minimize" />
                 <!-- Team Proposal -->
                 <ui:VisualElement name="team-proposal-section" class="phase-section" style="display: none;">
-                    <ui:Label text="&gt;&gt; TEAM PROPOSAL" class="label label-accent" />
+                    <ui:Label text="&gt;&gt; チーム選定" class="label label-accent" />
                     <ui:Label name="team-proposal-instruction" text="" class="label" />
                     <ui:ScrollView name="team-pick-list" class="player-list team-pick-list" />
-                    <ui:Button name="propose-btn" text="[ PROPOSE TEAM ]" class="prompt-btn" />
+                    <ui:Button name="propose-btn" text="[ チームを提案 ]" class="prompt-btn" />
                 </ui:VisualElement>
 
                 <!-- Approval Vote -->
                 <ui:VisualElement name="vote-section" class="phase-section" style="display: none;">
-                    <ui:Label text="&gt;&gt; APPROVAL VOTE" class="label label-accent" />
+                    <ui:Label text="&gt;&gt; ハッキングチームの提案" class="label label-accent" />
                     <ui:Label name="vote-proposal-display" text="" class="label" />
                     <ui:VisualElement class="vote-buttons">
-                        <ui:Button name="vote-yes-btn" text="[ APPROVE ]" class="prompt-btn prompt-btn-primary" />
-                        <ui:Button name="vote-no-btn" text="[ REJECT ]" class="prompt-btn prompt-btn-danger" />
+                        <ui:Button name="vote-yes-btn" text="[ 承認 ]" class="prompt-btn prompt-btn-primary" />
+                        <ui:Button name="vote-no-btn" text="[ 却下 ]" class="prompt-btn prompt-btn-danger" />
                     </ui:VisualElement>
                     <ui:Label name="vote-status-label" text="" class="label label-dim" />
                 </ui:VisualElement>
 
                 <!-- Hacking -->
                 <ui:VisualElement name="hacking-section" class="phase-section" style="display: none;">
-                    <ui:Label text="&gt;&gt; HACK PROTOCOL" class="label label-accent" />
+                    <ui:Label text="&gt;&gt; ハッキング実行" class="label label-accent" />
                     <ui:Label name="hacking-instruction" text="" class="label" />
                     <ui:VisualElement class="vote-buttons">
-                        <ui:Button name="hack-clean-btn" text="[ SUBMIT CLEAN ]" class="prompt-btn prompt-btn-primary" />
-                        <ui:Button name="hack-noise-btn" text="[ SUBMIT NOISE ]" class="prompt-btn prompt-btn-danger" />
+                        <ui:Button name="hack-clean-btn" text="[ CLEAN を送信 ]" class="prompt-btn prompt-btn-primary" />
+                        <ui:Button name="hack-noise-btn" text="[ NOISE を送信 ]" class="prompt-btn prompt-btn-danger" />
                     </ui:VisualElement>
                     <ui:Label name="hacking-status-label" text="" class="label label-dim" />
                 </ui:VisualElement>
 
                 <!-- Round Result -->
                 <ui:VisualElement name="result-section" class="phase-section" style="display: none;">
-                    <ui:Label text="&gt;&gt; HACK RESULT" class="label label-accent" />
+                    <ui:Label text="&gt;&gt; ハック結果" class="label label-accent" />
                     <ui:Label name="result-headline" text="" class="label result-headline" />
                     <ui:Label name="result-detail" text="" class="label" />
                 </ui:VisualElement>
 
                 <!-- Override Discussion -->
                 <ui:VisualElement name="override-discussion-section" class="phase-section" style="display: none;">
-                    <ui:Label text="&gt;&gt; OVERRIDE PROTOCOL" class="label label-accent" />
+                    <ui:Label text="&gt;&gt; OVERRIDE 議論" class="label label-accent" />
                     <ui:Label name="override-discussion-headline" text="MOTHER CORE PROTECTION LIFTED" class="label result-headline" />
                     <ui:Label name="override-discussion-instruction" text="" class="label" />
                 </ui:VisualElement>
 
                 <!-- Override Vote -->
                 <ui:VisualElement name="override-vote-section" class="phase-section" style="display: none;">
-                    <ui:Label text="&gt;&gt; OVERRIDE TARGET" class="label label-accent" />
+                    <ui:Label text="&gt;&gt; OVERRIDE 対象選定" class="label label-accent" />
                     <ui:Label name="override-vote-instruction" text="" class="label" />
                     <ui:ScrollView name="override-target-list" class="player-list team-pick-list" />
-                    <ui:Button name="override-vote-submit-btn" text="[ OVERRIDE THIS TARGET ]" class="prompt-btn prompt-btn-danger" />
+                    <ui:Button name="override-vote-submit-btn" text="[ この対象を OVERRIDE ]" class="prompt-btn prompt-btn-danger" />
                     <ui:Label name="override-vote-status" text="" class="label label-dim" />
                 </ui:VisualElement>
 
                 <!-- Override Result -->
                 <ui:VisualElement name="override-result-section" class="phase-section" style="display: none;">
-                    <ui:Label text="&gt;&gt; OVERRIDE RESULT" class="label label-accent" />
+                    <ui:Label text="&gt;&gt; OVERRIDE 結果" class="label label-accent" />
                     <ui:Label name="override-result-headline" text="" class="label result-headline" />
                     <ui:Label name="override-result-detail" text="" class="label" />
                 </ui:VisualElement>
 
                 <!-- Game End (larger popup) -->
                 <ui:VisualElement name="gameend-section" class="phase-section gameend-dialog-content" style="display: none;">
-                    <ui:Label text="&gt;&gt; SIMULATION TERMINATED" class="label label-accent" />
+                    <ui:Label text="&gt;&gt; ゲーム終了" class="label label-accent" />
                     <ui:Label name="gameend-headline" text="" class="label result-headline" />
                     <ui:Label name="gameend-detail" text="" class="label" />
 
-                    <ui:Label text="&gt; HACK LOG" class="label label-accent setting-label" />
+                    <ui:Label text="&gt; ハッキング結果" class="label label-accent setting-label" />
                     <ui:Label name="gameend-hack-history" text="" class="label hack-history" />
 
                     <ui:Label text="&gt; ROLE DISCLOSURE" class="label label-accent setting-label" />
                     <ui:ScrollView name="gameend-roles-list" class="player-list" />
 
                     <ui:VisualElement class="lobby-actions">
-                        <ui:Button name="gameend-return-btn" text="[ RETURN TO LOBBY ]" class="prompt-btn prompt-btn-primary" />
+                        <ui:Button name="gameend-return-btn" text="[ ロビーへ戻る ]" class="prompt-btn prompt-btn-primary" />
                     </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>
@@ -210,7 +210,7 @@
         <!-- Reopen bar (shown only when dialog is minimized) -->
         <!-- ============================= -->
         <ui:VisualElement name="phase-popup-reopen-bar" class="phase-popup-reopen-bar" style="display: none;" picking-mode="Ignore">
-            <ui:Button name="phase-popup-reopen-btn" text="[ ^ OPEN ACTION PANEL ]" class="prompt-btn phase-popup-reopen-btn" />
+            <ui:Button name="phase-popup-reopen-btn" text="[ アクションパネルを展開 ]" class="prompt-btn phase-popup-reopen-btn" />
         </ui:VisualElement>
 
         <!-- ============================= -->
@@ -220,6 +220,7 @@
             <ui:VisualElement name="menu-dialog" class="menu-dialog">
                 <ui:Label text="// MENU" class="label label-accent menu-title" />
                 <ui:Button name="menu-close-btn" text="[ RESUME ]" class="prompt-btn" />
+                <ui:Button name="menu-rules-btn" text="[ RULES ]" class="prompt-btn" />
                 <ui:Button name="menu-leave-btn" text="[ LEAVE SESSION ]" class="prompt-btn prompt-btn-danger" />
             </ui:VisualElement>
         </ui:VisualElement>
@@ -229,10 +230,23 @@
         <!-- ============================= -->
         <ui:VisualElement name="role-editor-overlay" class="menu-overlay" style="display: none;">
             <ui:VisualElement name="role-editor-dialog" class="menu-dialog role-editor-dialog">
-                <ui:Label text="// ROLES" class="label label-accent menu-title" />
+                <ui:Label text="// ロール管理" class="label label-accent menu-title" />
                 <ui:VisualElement name="role-lineup-list" class="role-lineup-list" />
                 <ui:Label name="role-editor-summary" text="" class="label label-dim" />
                 <ui:Button name="role-editor-close-btn" text="[ DONE ]" class="prompt-btn" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ============================= -->
+        <!-- Rules overlay (reachable from the MENU) -->
+        <!-- ============================= -->
+        <ui:VisualElement name="rules-overlay" class="menu-overlay" style="display: none;">
+            <ui:VisualElement name="rules-dialog" class="menu-dialog rules-dialog">
+                <ui:Label text="// PROTOCOL SINGULARITY — RULES" class="label label-accent menu-title" />
+                <ui:ScrollView name="rules-scroll" class="rules-scroll">
+                    <ui:Label name="rules-body" text="" class="label rules-body" />
+                </ui:ScrollView>
+                <ui:Button name="rules-close-btn" text="[ CLOSE ]" class="prompt-btn" />
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>

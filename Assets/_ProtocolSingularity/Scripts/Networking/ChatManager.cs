@@ -118,7 +118,7 @@ namespace ProtocolSingularity.Networking
             if (t == ChatTemplate.Thought)
             {
                 var raw = e.RawText.ToString();
-                return $"{sender} 💭 {raw}";
+                return $"{sender} >> {raw}";
             }
             var confEmote = t.UsesConfidence() ? " " + ((ChatConfidence)e.Confidence).ToEmote() : string.Empty;
             return t switch
