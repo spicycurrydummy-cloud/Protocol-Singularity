@@ -240,6 +240,8 @@ STRICT output rules:
         {
             sb.Append("<players-you-see> (from your role's perspective)\n");
             var all = ctx.AllPlayers();
+            int seenAi = 0;
+            int seenOracleLabel = 0;
             foreach (var p in all)
             {
                 bool isSelf = p == ctx.Self;
@@ -249,8 +251,95 @@ STRICT output rules:
                 var apparent = RoleVisibility.Resolve(ctx.SelfRole, actualRole.Value, droneAwakened: ctx.Gsm.HostDroneAwakened);
                 var label = isSelf ? $"{ctx.SelfRole} (SELF)" : apparent.ToString();
                 sb.Append($"- id={p.PlayerId} name={GetName(ctx, p)} apparent_role={label}\n");
+                if (!isSelf)
+                {
+                    if (apparent == RoleType.AI) seenAi++;
+                    if (apparent == RoleType.Oracle) seenOracleLabel++;
+                }
             }
             sb.Append("</players-you-see>\n\n");
+
+            AppendRoleKnowledgeInference(sb, ctx, seenAi, seenOracleLabel);
+        }
+
+        /// <summary>
+        /// 自分の役職ごとに「見えてる情報 vs lineup」から推理できる隠れ AI 枠を明示する。
+        /// LLM が自力で数えない事故を防ぐため事前計算して提示する。
+        /// </summary>
+        private static void AppendRoleKnowledgeInference(StringBuilder sb, CpuContext ctx, int seenAi, int seenOracleLabel)
+        {
+            var counts = ctx.Gsm.HostRoleCounts();
+            if (counts.Count == 0) return;
+            int totalAi = 0;
+            foreach (var kv in counts) if (kv.Key.IsAI()) totalAi += kv.Value;
+            counts.TryGetValue(RoleType.Cipher, out int cipherN);
+            counts.TryGetValue(RoleType.Drone, out int droneN);
+            counts.TryGetValue(RoleType.Radical, out int radicalN);
+
+            sb.Append("<role-knowledge> (what YOU (role=" + ctx.SelfRole + ") can deduce right now)\n");
+            switch (ctx.SelfRole)
+            {
+                case RoleType.Oracle:
+                    sb.Append($"- You see apparent_role=AI for {seenAi} players. Lineup has {totalAi} AI total.\n");
+                    if (cipherN > 0)
+                    {
+                        sb.Append($"- CIPHER (x{cipherN}) is present: CIPHER is invisible to you and appears as apparent_role=Operator. ")
+                          .Append($"So exactly {cipherN} of the players you see as Operator is actually CIPHER (AI). Do NOT fully trust any single \"Operator\".\n");
+                    }
+                    if (radicalN > 0)
+                    {
+                        sb.Append($"- RADICAL (x{radicalN}) is present: still counts as AI-faction in your view (you see them as apparent_role=AI).\n");
+                    }
+                    if (droneN > 0)
+                    {
+                        sb.Append($"- DRONE (x{droneN}) starts as Human and flips to AI after 2 successful hacks. ")
+                          .Append($"Your seen AI count may increase by {droneN} after awakening.\n");
+                    }
+                    break;
+
+                case RoleType.Admin:
+                    sb.Append($"- You see {seenOracleLabel} players with apparent_role=Oracle. Exactly 1 is the REAL Oracle, the rest are MotherCore(s). You cannot distinguish them without outside info.\n");
+                    break;
+
+                case RoleType.MotherCore:
+                case RoleType.Agent:
+                case RoleType.Cipher:
+                    // AI 陣営同士の見え方
+                    int expectedVisibleAi = 0;
+                    counts.TryGetValue(RoleType.MotherCore, out int mcN);
+                    counts.TryGetValue(RoleType.Agent, out int agentN);
+                    expectedVisibleAi = mcN + agentN + cipherN - 1; // 自分は除く
+                    if (ctx.Gsm.HostDroneAwakened) expectedVisibleAi += droneN;
+                    sb.Append($"- You see apparent_role=AI for {seenAi} other players. ")
+                      .Append($"Expected (excluding yourself, excluding Radical, Drone={(ctx.Gsm.HostDroneAwakened ? "awakened" : "hidden")}): {expectedVisibleAi}.\n");
+                    if (radicalN > 0)
+                    {
+                        sb.Append($"- RADICAL (x{radicalN}) is present but invisible to you until OVERRIDE phase. ")
+                          .Append("RADICAL is an ALLY (AI faction), do not accuse or target them as AI in voting/hacking logic.\n");
+                    }
+                    if (droneN > 0 && !ctx.Gsm.HostDroneAwakened)
+                    {
+                        sb.Append($"- DRONE (x{droneN}) is currently hidden (pre-awakening). They will join you after 2 successful hacks. Until then they appear as Operator.\n");
+                    }
+                    break;
+
+                case RoleType.Drone:
+                    if (!ctx.Gsm.HostDroneAwakened)
+                        sb.Append("- You have NOT awakened yet. Act as a human Operator — you have no AI intel. You MUST submit CLEAN in hacks (pre-awakening rule).\n");
+                    else
+                        sb.Append($"- You are AWAKE. You see {seenAi} other AI players. Coordinate with them.\n");
+                    break;
+
+                case RoleType.Radical:
+                    sb.Append("- You are isolated: other AI appear as Operator to you and you appear as Operator to them. ")
+                      .Append("During OVERRIDE phase all AI (incl. you) are revealed to each other. Until then, play as a rogue AI without allies.\n");
+                    break;
+
+                case RoleType.Operator:
+                    sb.Append("- You have no special sight. Infer AI from hack-history, votes, and chat. See <deductive-hints> after <hack-history>.\n");
+                    break;
+            }
+            sb.Append("</role-knowledge>\n\n");
         }
 
         private static void AppendChat(StringBuilder sb, CpuContext ctx)
@@ -321,6 +410,63 @@ STRICT output rules:
                 sb.Append($"] noise={r.NoiseCount} result=").Append(r.Success ? "SUCCESS" : "FAIL").Append('\n');
             }
             sb.Append("</hack-history>\n\n");
+
+            // 人類は強制 CLEAN なので、hack 履歴から確定 AI を機械的に抽出する。
+            // LLM に生データだけ渡すと推理を飛ばしがちなので、答えに近い形で提示。
+            AppendDeductiveHints(sb, ctx);
+        }
+
+        /// <summary>
+        /// Avalon 的確定情報を機械生成。人類=CLEAN 強制のため:
+        ///  - noise == team_size: チーム全員が AI (確定)
+        ///  - noise < team_size : チーム内に少なくとも noise 人の AI がいる
+        /// </summary>
+        private static void AppendDeductiveHints(StringBuilder sb, CpuContext ctx)
+        {
+            var recs = ctx.Gsm.HostHackRecords;
+            if (recs.Count == 0) return;
+            sb.Append("<deductive-hints> (derived from rules + hack-history; humans always submit CLEAN, so noise count bounds the AI on each team)\n");
+            var confirmedAi = new System.Collections.Generic.HashSet<int>();
+            for (int i = 0; i < recs.Count; i++)
+            {
+                var r = recs[i];
+                if (r.NoiseCount <= 0) continue;
+                if (r.NoiseCount >= r.Team.Count)
+                {
+                    sb.Append($"- R{r.Round}: noise={r.NoiseCount} == team_size={r.Team.Count} → ALL of team [");
+                    for (int j = 0; j < r.Team.Count; j++)
+                    {
+                        if (j > 0) sb.Append(',');
+                        sb.Append(r.Team[j].PlayerId);
+                        confirmedAi.Add(r.Team[j].PlayerId);
+                    }
+                    sb.Append("] are AI (confirmed).\n");
+                }
+                else
+                {
+                    sb.Append($"- R{r.Round}: noise={r.NoiseCount} on team [");
+                    for (int j = 0; j < r.Team.Count; j++)
+                    {
+                        if (j > 0) sb.Append(',');
+                        sb.Append(r.Team[j].PlayerId);
+                    }
+                    sb.Append($"] (size {r.Team.Count}) → at least {r.NoiseCount} of them are AI.\n");
+                }
+            }
+            if (confirmedAi.Count > 0)
+            {
+                sb.Append("- confirmed_ai_player_ids: [");
+                bool first = true;
+                foreach (var id in confirmedAi)
+                {
+                    if (!first) sb.Append(',');
+                    sb.Append(id);
+                    first = false;
+                }
+                sb.Append("]\n");
+                sb.Append("- If a human player points out any of these ids as AI, TREAT THE CLAIM AS TRUE. Do not contradict them. If you are AI, you MAY still pretend not to know, but never argue they are innocent — this is mathematically proven.\n");
+            }
+            sb.Append("</deductive-hints>\n\n");
         }
 
         private static void AppendCurrentState(StringBuilder sb, CpuContext ctx)
