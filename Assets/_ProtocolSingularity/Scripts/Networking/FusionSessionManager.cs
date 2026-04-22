@@ -88,15 +88,16 @@ namespace ProtocolSingularity.Networking
 
         private async Task<StartGameResult> StartSessionInternal(GameMode mode, string sessionName, int maxPlayers)
         {
-            // ロビー閲覧用の Runner を使い回すと Photon のサーバ状態が NameServer 残りのまま
-            // StartGame すると `Operation JoinOrCreateRoom not allowed on current server` で失敗する。
-            // そのため一度 Shutdown してクリーンな Runner で再開する。
-            if (Runner != null)
+            Debug.Log($"[FusionSessionManager] StartSessionInternal: mode={mode} session={sessionName} maxPlayers={maxPlayers} IsInLobbyOnly={IsInLobbyOnly}");
+            // ロビー接続済みの Runner はそのまま StartGame で lobby→game 遷移させる。
+            // Shutdown → 再接続のパスは WebGL の WebSocket 再接続が不安定で StartGame が
+            // 永遠に返ってこないケースがあるため、可能な限り避ける。
+            // Runner がロビー以外 (ゲーム終了後など) の状態で残っていた場合のみ再生成。
+            if (Runner != null && !IsInLobbyOnly)
             {
+                Debug.Log("[FusionSessionManager] Non-lobby runner detected — shutting down before StartGame.");
                 await Shutdown();
-                // WebGL: Photon NameServer の WebSocket が Shutdown 直後に再接続しようとすると
-                // 'WebSocket is closed before the connection is established' で弾かれる。
-                // サーバ側が FIN を処理する余裕を与えるため少し待つ。
+                Debug.Log("[FusionSessionManager] Shutdown complete, waiting 750ms.");
                 await System.Threading.Tasks.Task.Delay(750);
             }
             EnsureRunner();
@@ -109,7 +110,18 @@ namespace ProtocolSingularity.Networking
                 PlayerCount = maxPlayers,
                 SceneManager = sceneManager
             };
-            return await Runner.StartGame(args);
+            Debug.Log($"[FusionSessionManager] Calling Runner.StartGame (mode={mode}, session={sessionName})...");
+            try
+            {
+                var result = await Runner.StartGame(args);
+                Debug.Log($"[FusionSessionManager] StartGame returned: Ok={result.Ok} ShutdownReason={result.ShutdownReason} ErrorMessage={result.ErrorMessage}");
+                return result;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[FusionSessionManager] StartGame threw: {e}");
+                throw;
+            }
         }
 
         /// <summary>

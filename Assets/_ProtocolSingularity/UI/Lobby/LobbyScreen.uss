@@ -253,10 +253,13 @@
 }
 
 .game-log-entry.-tag-team {
-    color: rgb(200, 240, 200);
-    padding: 2px 6px;
-    border-left-width: 2px;
-    border-left-color: rgb(120, 200, 140);
+    color: rgb(210, 180, 255);
+    -unity-font-style: bold;
+    padding: 4px 6px;
+    margin: 2px 0;
+    background-color: rgba(50, 30, 80, 0.40);
+    border-left-width: 3px;
+    border-left-color: rgb(200, 160, 255);
 }
 
 .game-log-entry.-tag-vote {
@@ -372,6 +375,10 @@
 
 .chat-input {
     flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    /* min-width: 0 がないと content の min-width が効いて長文で flex row が横に伸びる */
+    min-width: 0;
     margin-right: 10px;
 }
 
@@ -387,6 +394,9 @@
     height: 42px;
     min-height: 42px;
     max-height: 42px;
+    /* 長文でもフィールド幅を超えないよう content を内部でクリップ */
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 .chat-mention-row {
@@ -617,18 +627,23 @@
 .role-lineup-panel {
     flex-direction: column;
     flex-shrink: 0;   /* 親の flex 配分で圧縮されないよう固定 (子要素がはみ出る原因だった) */
+    /* flex auto min-width を無効化。これを入れないと nowrap ラベルの preferred width が
+       parent (column) を広げて UI 全体がガタつく。 */
+    min-width: 0;
     margin-top: 8px;
     margin-bottom: 8px;
-    /* right padding は EDIT ボタン分 (72px + 余白) を避けるために大きめ */
-    padding: 10px 96px 12px 14px;
+    /* 内部ラベルが右まで使えるように padding-right は最小に。
+       EDIT ボタンは absolute position で上側右端に固定されているので衝突しない。 */
+    padding: 10px 14px 12px 14px;
     background-color: rgb(10, 16, 10);
     border-width: 1px;
     border-color: rgb(40, 120, 80);
 }
 
-/* ROLES 見出しだけは label-accent のデフォルト下マージン (10px) を縮める */
+/* ROLES 見出しだけは label-accent のデフォルト下マージン (10px) を縮める。
+   EDIT ボタン (absolute, width ~72, right 12) と重ならないよう右マージンを確保。 */
 .role-lineup-panel > .label-accent {
-    margin-bottom: 4px;
+    margin: 0 90px 4px 0;
     padding: 0;
 }
 
@@ -657,7 +672,10 @@
 }
 
 #role-lineup-compact {
-    white-space: normal;
+    white-space: nowrap;         /* 役職追加で折返し→高さ増加→隣接 UI がガタつくのを防ぐ */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;                /* 親 column を広げないように flex min-width を解除 */
     margin: 0;
     padding: 0;                  /* Label default の 4/4 を除去してベタ付け */
     font-size: 14px;

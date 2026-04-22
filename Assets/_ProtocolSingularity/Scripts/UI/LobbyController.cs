@@ -396,6 +396,7 @@ namespace ProtocolSingularity.UI
                 _roleIncludeCipher = entry.includeCipher;
                 _roleIncludeDrone = entry.includeDrone;
                 _roleIncludeRadical = entry.includeRadical;
+                PushSettings(); // 同期しないとクライアントが取り残される
             }
             RefreshRoleLineup();
         }
@@ -493,10 +494,10 @@ namespace ProtocolSingularity.UI
                 _roleLineupList.Add(BuildRoleRow("ADMIN",  1, isAi: false, fixedRole: true, enabled: true, onChange: null));
                 _roleLineupList.Add(BuildRoleRow("OPERATOR (auto)", Mathf.Max(0, opCount), isAi: false, fixedRole: true, enabled: opCount >= 0, onChange: null));
                 _roleLineupList.Add(BuildRoleRow("MOTHER CORE", 1, isAi: true, fixedRole: true, enabled: true, onChange: null));
-                _roleLineupList.Add(BuildRoleRow("AGENT (basic AI)", _roleIncludeAgent ? 1 : 0, isAi: true, fixedRole: false, enabled: _roleIncludeAgent, toggleValue: _roleIncludeAgent, onChange: v => { _roleIncludeAgent = v; RefreshRoleLineup(); }));
-                _roleLineupList.Add(BuildRoleRow("CIPHER (hidden from ORACLE)", _roleIncludeCipher ? 1 : 0, isAi: true, fixedRole: false, enabled: _roleIncludeCipher, toggleValue: _roleIncludeCipher, onChange: v => { _roleIncludeCipher = v; RefreshRoleLineup(); }));
-                _roleLineupList.Add(BuildRoleRow("DRONE (awakens mid-game)", _roleIncludeDrone ? 1 : 0, isAi: true, fixedRole: false, enabled: _roleIncludeDrone, toggleValue: _roleIncludeDrone, onChange: v => { _roleIncludeDrone = v; RefreshRoleLineup(); }));
-                _roleLineupList.Add(BuildRoleRow("RADICAL (isolated AI)", _roleIncludeRadical ? 1 : 0, isAi: true, fixedRole: false, enabled: _roleIncludeRadical, toggleValue: _roleIncludeRadical, onChange: v => { _roleIncludeRadical = v; RefreshRoleLineup(); }));
+                _roleLineupList.Add(BuildRoleRow("AGENT (basic AI)", _roleIncludeAgent ? 1 : 0, isAi: true, fixedRole: false, enabled: _roleIncludeAgent, toggleValue: _roleIncludeAgent, onChange: v => { _roleIncludeAgent = v; PushSettings(); RefreshRoleLineup(); }));
+                _roleLineupList.Add(BuildRoleRow("CIPHER (hidden from ORACLE)", _roleIncludeCipher ? 1 : 0, isAi: true, fixedRole: false, enabled: _roleIncludeCipher, toggleValue: _roleIncludeCipher, onChange: v => { _roleIncludeCipher = v; PushSettings(); RefreshRoleLineup(); }));
+                _roleLineupList.Add(BuildRoleRow("DRONE (awakens mid-game)", _roleIncludeDrone ? 1 : 0, isAi: true, fixedRole: false, enabled: _roleIncludeDrone, toggleValue: _roleIncludeDrone, onChange: v => { _roleIncludeDrone = v; PushSettings(); RefreshRoleLineup(); }));
+                _roleLineupList.Add(BuildRoleRow("RADICAL (isolated AI)", _roleIncludeRadical ? 1 : 0, isAi: true, fixedRole: false, enabled: _roleIncludeRadical, toggleValue: _roleIncludeRadical, onChange: v => { _roleIncludeRadical = v; PushSettings(); RefreshRoleLineup(); }));
             }
 
             if (_roleEditBtn != null)
@@ -538,6 +539,25 @@ namespace ProtocolSingularity.UI
                 row.Add(toggle);
             }
             return row;
+        }
+
+        // CPU に割り当てるコードネーム候補。チェス駒 + 近い役割の fairy chess / shogi からピック。
+        // 最大 CpuPlayerRef.MaxCpuCount (10) 分の枠を埋められる重複なしリスト。
+        private static readonly string[] CpuCodenames =
+        {
+            "PAWN", "KNIGHT", "BISHOP", "ROOK", "QUEEN", "KING",
+            "LANCE", "HERALD", "SENTRY", "MARSHAL"
+        };
+
+        private static System.Collections.Generic.List<string> BuildShuffledCpuCodenames()
+        {
+            var list = new System.Collections.Generic.List<string>(CpuCodenames);
+            for (int i = list.Count - 1; i > 0; i--)
+            {
+                int j = UnityEngine.Random.Range(0, i + 1);
+                (list[i], list[j]) = (list[j], list[i]);
+            }
+            return list;
         }
 
         /// <summary>現在の UI トグルから実行時 Entry を構築。</summary>
@@ -591,8 +611,16 @@ namespace ProtocolSingularity.UI
         private void ApplyHostVisibility()
         {
             bool host = _sm.IsHost;
-            if (_hostSettings != null) _hostSettings.style.display = host ? DisplayStyle.Flex : DisplayStyle.None;
+            // 設定パネルはクライアント側でも表示して内容を確認できるようにする。
+            // 編集可能なコントロールだけ host 限定で無効化する。
+            if (_hostSettings != null) _hostSettings.style.display = DisplayStyle.Flex;
             if (_startBtn != null) _startBtn.SetEnabled(host);
+            if (_playerCountSlider != null) _playerCountSlider.SetEnabled(host);
+            if (_discussionSlider != null) _discussionSlider.SetEnabled(host);
+            if (_voteSlider != null) _voteSlider.SetEnabled(host);
+            if (_hackSlider != null) _hackSlider.SetEnabled(host);
+            if (_cpuFillToggle != null) _cpuFillToggle.SetEnabled(host);
+            // role-edit ボタンは既に RefreshRoleLineup 側で host 限定表示にしているため触らない
         }
 
         private async void OnSessionShutdown(ShutdownReason reason)
@@ -1556,6 +1584,11 @@ namespace ProtocolSingularity.UI
                 if (_voteSlider != null) _voteSlider.SetValueWithoutNotify(hs.VoteSeconds);
                 if (_hackSlider != null) _hackSlider.SetValueWithoutNotify(hs.HackSeconds);
                 if (_cpuFillToggle != null) _cpuFillToggle.SetValueWithoutNotify(hs.EnableCpuFill);
+                // Role 編集の真実源は HostSettings (ホストが更新するとクライアントへ同期)。
+                _roleIncludeAgent = hs.IncludeAgent;
+                _roleIncludeCipher = hs.IncludeCipher;
+                _roleIncludeDrone = hs.IncludeDrone;
+                _roleIncludeRadical = hs.IncludeRadical;
             }
             finally { _suppressSettingsPush = false; }
 
@@ -1597,6 +1630,10 @@ namespace ProtocolSingularity.UI
             hs.VoteSeconds = _voteSlider.value;
             hs.HackSeconds = _hackSlider.value;
             hs.EnableCpuFill = _cpuFillToggle.value;
+            hs.IncludeAgent = _roleIncludeAgent;
+            hs.IncludeCipher = _roleIncludeCipher;
+            hs.IncludeDrone = _roleIncludeDrone;
+            hs.IncludeRadical = _roleIncludeRadical;
         }
 
         private void OnStartClicked()
@@ -1619,8 +1656,9 @@ namespace ProtocolSingularity.UI
             {
                 int target = Mathf.Clamp(hs.TargetPlayerCount, humanCount, GameStateManager.MaxPlayers);
                 int needed = Mathf.Max(0, target - humanCount);
+                var names = BuildShuffledCpuCodenames();
                 for (int i = 0; i < needed; i++)
-                    reg.RegisterCpu($"CPU_{(i + 1):00}");
+                    reg.RegisterCpu(names[i]);
             }
 
             int totalPlayers = reg.Count;

@@ -19,6 +19,10 @@ namespace ProtocolSingularity.Networking
         [Networked, OnChangedRender(nameof(OnChanged))] public int VoteSeconds { get; set; }
         [Networked, OnChangedRender(nameof(OnChanged))] public int HackSeconds { get; set; }
         [Networked, OnChangedRender(nameof(OnChanged))] public NetworkBool EnableCpuFill { get; set; }
+        [Networked, OnChangedRender(nameof(OnChanged))] public NetworkBool IncludeAgent { get; set; }
+        [Networked, OnChangedRender(nameof(OnChanged))] public NetworkBool IncludeCipher { get; set; }
+        [Networked, OnChangedRender(nameof(OnChanged))] public NetworkBool IncludeDrone { get; set; }
+        [Networked, OnChangedRender(nameof(OnChanged))] public NetworkBool IncludeRadical { get; set; }
 
         public override void Spawned()
         {

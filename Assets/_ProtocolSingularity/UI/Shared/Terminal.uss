@@ -182,6 +182,8 @@
 
 .column {
     flex-grow: 1;
+    flex-basis: 0;
+    min-width: 0;        /* 子要素の content-based min-width が column を膨らませないように */
     margin-right: 10px;
     margin-left: 10px;
 }
