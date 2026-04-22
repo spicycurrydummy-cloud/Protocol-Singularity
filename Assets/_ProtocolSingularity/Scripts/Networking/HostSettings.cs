@@ -34,6 +34,11 @@ namespace ProtocolSingularity.Networking
                 if (VoteSeconds == 0) VoteSeconds = 30;
                 if (HackSeconds == 0) HackSeconds = 30;
                 EnableCpuFill = true;
+                // 6 人スタンダード初期構成: Oracle+Admin+Operator x2 / MotherCore+Agent (4:2)
+                IncludeAgent = true;
+                IncludeCipher = false;
+                IncludeDrone = false;
+                IncludeRadical = false;
             }
             SettingsChanged?.Invoke();
         }

@@ -24,6 +24,15 @@ namespace ProtocolSingularity.Networking
         public float MaxThinkSeconds = 8f;
 
         private readonly Dictionary<PlayerRef, ICpuBrain> _brains = new();
+        private readonly Dictionary<PlayerRef, string> _personalities = new();
+        private static readonly string[] PersonalityPool =
+        {
+            "慎重タイプ (疑い深く、根拠の薄い主張には反対寄り。発言は短く絞る)",
+            "楽観タイプ (前向きで提案を通したがる。フレンドリーな口調)",
+            "論理タイプ (数字と因果で語る。過去の投票やハック結果を引用する)",
+            "攻撃タイプ (疑わしいプレイヤーを名指しで追及する。威圧的)",
+            "寡黙タイプ (発言量は少なめ。要点を短く断言する)"
+        };
         private System.Random _rng;
         private CancellationTokenSource _cts;
 
@@ -68,6 +77,7 @@ namespace ProtocolSingularity.Networking
             _cts?.Dispose();
             _cts = new CancellationTokenSource();
             _brains.Clear();
+            _personalities.Clear();
             _proposalDoneFor.Clear();
             _voteDoneFor.Clear();
             _hackDoneFor.Clear();
@@ -91,11 +101,17 @@ namespace ProtocolSingularity.Networking
 
         private CpuContext BuildContext(PlayerRef cpu, RoleType role, GameStateManager gsm, PlayerRegistry reg)
         {
+            if (!_personalities.TryGetValue(cpu, out var personality))
+            {
+                personality = PersonalityPool[_rng.Next(PersonalityPool.Length)];
+                _personalities[cpu] = personality;
+            }
             return new CpuContext(
                 cpu, role, gsm, reg,
                 ChatManager.Instance,
                 _rng,
-                gsm.TryGetHostRoleAsNullable);
+                gsm.TryGetHostRoleAsNullable,
+                personality);
         }
 
         private void OnGsmChanged()

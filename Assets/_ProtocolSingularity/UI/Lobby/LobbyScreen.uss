@@ -105,6 +105,12 @@
     white-space: normal;
 }
 
+.hack-log-noise {
+    font-size: 13px;
+    color: rgb(220, 200, 140);
+    margin-top: 2px;
+}
+
 .phase-content {
     flex-grow: 1;
 }
@@ -703,7 +709,8 @@
     min-height: 30px;
     background-color: rgb(14, 20, 14);
     border-left-width: 2px;
-    border-left-color: rgb(60, 200, 120);
+    /* 人類陣営は青系 (FactionColors.Human と整合) */
+    border-left-color: rgb(110, 170, 255);
 }
 
 .role-lineup-row.-ai { border-left-color: rgb(255, 120, 120); }

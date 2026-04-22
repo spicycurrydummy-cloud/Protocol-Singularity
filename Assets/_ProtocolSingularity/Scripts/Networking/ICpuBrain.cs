@@ -42,9 +42,10 @@ namespace ProtocolSingularity.Networking
         public readonly ChatManager Chat;
         public readonly Random Rng;
         public readonly Func<PlayerRef, RoleType?> LookupRole; // ホストのみ参照可
+        public readonly string Personality; // "慎重" / "楽観" / "論理" など (空なら付与しない)
 
         public CpuContext(PlayerRef self, RoleType role, GameStateManager gsm, PlayerRegistry reg,
-            ChatManager chat, Random rng, Func<PlayerRef, RoleType?> lookupRole)
+            ChatManager chat, Random rng, Func<PlayerRef, RoleType?> lookupRole, string personality = null)
         {
             Self = self;
             SelfRole = role;
@@ -53,6 +54,7 @@ namespace ProtocolSingularity.Networking
             Chat = chat;
             Rng = rng;
             LookupRole = lookupRole;
+            Personality = personality;
         }
 
         public List<PlayerRef> AllPlayers()

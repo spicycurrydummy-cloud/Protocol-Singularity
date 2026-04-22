@@ -231,6 +231,8 @@ STRICT output rules:
             sb.Append($"- display_name: {myName}   <-- THIS IS YOU. Never @ yourself, never describe yourself in third person.\n");
             sb.Append($"- role: {ctx.SelfRole}\n");
             sb.Append($"- faction: {(ctx.SelfRole.IsAI() ? "AI" : "Human")}\n");
+            if (!string.IsNullOrEmpty(ctx.Personality))
+                sb.Append($"- personality: {ctx.Personality}\n");
             sb.Append("</your-identity>\n\n");
         }
 
@@ -345,7 +347,40 @@ STRICT output rules:
             }
             int totalPlayers = g.TotalPlayers > 0 ? g.TotalPlayers : g.LeaderOrderCount;
             sb.Append("- round_table: ").Append(RoundTable.DescribeForPlayerCount(totalPlayers)).Append('\n');
+            AppendLineup(sb, ctx, totalPlayers);
             sb.Append("</current-phase>\n");
+        }
+
+        /// <summary>この試合にどんな役職が何人いるかを CPU に明示する (推理材料)。</summary>
+        private static void AppendLineup(StringBuilder sb, CpuContext ctx, int totalPlayers)
+        {
+            var counts = ctx.Gsm.HostRoleCounts();
+            if (counts.Count == 0) return;
+            int humans = 0, ais = 0;
+            foreach (var kv in counts)
+            {
+                if (kv.Key.IsAI()) ais += kv.Value;
+                else humans += kv.Value;
+            }
+            sb.Append("- lineup_summary: total=").Append(totalPlayers)
+              .Append(" humans=").Append(humans).Append(" ai=").Append(ais).Append('\n');
+            sb.Append("- lineup_roles: ");
+            bool first = true;
+            // 表記順を安定化するため既知順で列挙
+            var order = new[]
+            {
+                RoleType.Oracle, RoleType.Admin, RoleType.Operator,
+                RoleType.MotherCore, RoleType.Agent, RoleType.Cipher,
+                RoleType.Drone, RoleType.Radical
+            };
+            foreach (var rt in order)
+            {
+                if (!counts.TryGetValue(rt, out var n) || n <= 0) continue;
+                if (!first) sb.Append(", ");
+                sb.Append(rt).Append(" x").Append(n);
+                first = false;
+            }
+            sb.Append('\n');
         }
 
         private static string GetName(CpuContext ctx, PlayerRef pr)

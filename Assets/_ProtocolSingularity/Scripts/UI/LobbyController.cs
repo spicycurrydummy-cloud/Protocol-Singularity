@@ -58,7 +58,10 @@ namespace ProtocolSingularity.UI
         private Button _roleEditBtn;
         private Button _roleEditorCloseBtn;
         private VisualElement _roleEditorOverlay;
-        private bool _roleIncludeAgent;
+        // 6 人スタンダード構成: Oracle+Admin+Operator x2 / MotherCore+Agent → Human 4 : AI 2。
+        // HostSettings 同期前のローカル初期値を Agent=true に寄せておくことで
+        // 初回に Host が触らなくてもすぐ「4:2」が成立する (後ほど Host が初期化で push する)。
+        private bool _roleIncludeAgent = true;
         private bool _roleIncludeCipher;
         private bool _roleIncludeDrone;
         private bool _roleIncludeRadical;
@@ -541,12 +544,15 @@ namespace ProtocolSingularity.UI
             return row;
         }
 
-        // CPU に割り当てるコードネーム候補。チェス駒 + 近い役割の fairy chess / shogi からピック。
-        // 最大 CpuPlayerRef.MaxCpuCount (10) 分の枠を埋められる重複なしリスト。
+        // CPU に割り当てるコードネーム候補。タロット大アルカナ 22 枚 ("THE" は除外) を採用。
+        // CpuPlayerRef.MaxCpuCount (10) を超えて増えても候補が尽きないよう 22 枠を用意。
         private static readonly string[] CpuCodenames =
         {
-            "PAWN", "KNIGHT", "BISHOP", "ROOK", "QUEEN", "KING",
-            "LANCE", "HERALD", "SENTRY", "MARSHAL"
+            "FOOL", "MAGICIAN", "PRIESTESS", "EMPRESS", "EMPEROR",
+            "HIEROPHANT", "LOVERS", "CHARIOT", "STRENGTH", "HERMIT",
+            "FORTUNE", "JUSTICE", "HANGED", "DEATH", "TEMPERANCE",
+            "DEVIL", "TOWER", "STAR", "MOON", "SUN",
+            "JUDGEMENT", "WORLD"
         };
 
         private static System.Collections.Generic.List<string> BuildShuffledCpuCodenames()
@@ -1470,11 +1476,15 @@ namespace ProtocolSingularity.UI
                 if (i > 0) teamSb.Append(", ");
                 teamSb.Append(ResolveColoredPlayerName(r.Team[i]));
             }
-            teamSb.Append("   NOISE: ").Append(r.Noise);
             var body = new Label(teamSb.ToString());
             body.enableRichText = true;
             body.AddToClassList("hack-log-body");
             row.Add(body);
+
+            // NOISE 数は SUCCESS/FAIL 表示の下に別行で (見やすさ向上のため)
+            var noiseLbl = new Label($"NOISE: {r.Noise}");
+            noiseLbl.AddToClassList("hack-log-noise");
+            row.Add(noiseLbl);
 
             return row;
         }

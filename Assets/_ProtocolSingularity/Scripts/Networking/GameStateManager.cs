@@ -302,6 +302,19 @@ namespace ProtocolSingularity.Networking
             return _assignedRoles.TryGetValue(p, out var r) ? r : (RoleType?)null;
         }
 
+        /// <summary>ホスト専用: 今回の試合の役職構成を集計して返す (CPU プロンプト用)。</summary>
+        public Dictionary<RoleType, int> HostRoleCounts()
+        {
+            var dict = new Dictionary<RoleType, int>();
+            if (!HasStateAuthority) return dict;
+            foreach (var r in _assignedRoles.Values)
+            {
+                dict.TryGetValue(r, out var c);
+                dict[r] = c + 1;
+            }
+            return dict;
+        }
+
         // ==========================================================
         // Team proposal (leader)
         // ==========================================================
