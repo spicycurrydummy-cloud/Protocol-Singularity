@@ -382,7 +382,11 @@
     border-width: 1px;
     padding: 8px 10px;
     font-size: 16px;
-    min-height: 36px;
+    -unity-text-align: middle-left;
+    /* empty → 日本語 fill で line-height が増えても伸縮しないよう height で pin。 */
+    height: 42px;
+    min-height: 42px;
+    max-height: 42px;
 }
 
 .chat-mention-row {

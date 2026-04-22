@@ -1,6 +1,16 @@
 /* Protocol Singularity — WebGL host page theme.
    Terminal-style palette matching the in-game UI (dark green / accent cyan-green). */
 
+/* Unity の UI Toolkit と同じフォントを HTML overlay でも使うために同梱。
+   ime-bridge.js の overlay が TextField と同じ Noto Sans JP で描画される。 */
+@font-face {
+  font-family: "ProtocolSingularityJP";
+  src: url("NotoSansJP-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -8,7 +18,7 @@ html, body {
   height: 100%;
   background-color: #080C08;
   color: #C8E6C8;
-  font-family: "Consolas", "Menlo", "Courier New", monospace;
+  font-family: "ProtocolSingularityJP", "Consolas", "Menlo", "Courier New", monospace;
   overflow: hidden;
 }
 

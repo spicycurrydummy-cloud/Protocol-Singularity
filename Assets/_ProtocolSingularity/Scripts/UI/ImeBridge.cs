@@ -107,9 +107,12 @@ namespace ProtocolSingularity.UI
             float ny = fieldWorld.y / panelWorld.height;
             float nw = fieldWorld.width / panelWorld.width;
             float nh = fieldWorld.height / panelWorld.height;
-            // font size も panel 高さに対する比率として送る (JS 側で canvas 高さに乗算)
-            float fontRatio = fontPx > 0f ? (fontPx / panelWorld.height) : 0f;
-            ImeBridge_Place(nx, ny, nw, nh, fontRatio);
+            // font-size は field 高さに対する比率として送る (無次元量)。JS 側で field の
+            // CSS 高さに乗算することで、PanelSettings の scale や DPR に関係なく
+            // Unity の描画サイズと HTML overlay が視覚的に一致する。
+            float fontOverField = (fontPx > 0f && fieldWorld.height > 0f)
+                ? (fontPx / fieldWorld.height) : 0f;
+            ImeBridge_Place(nx, ny, nw, nh, fontOverField);
         }
 
         public static bool IsAvailable =>

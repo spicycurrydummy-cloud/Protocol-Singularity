@@ -112,7 +112,12 @@
     border-color: var(--ps-accent-dim);
     padding: 12px 14px;
     font-size: 20px;
-    min-height: 44px;
+    /* HTML input (中央寄せ) と垂直位置を揃える */
+    -unity-text-align: middle-left;
+    /* empty → 日本語 fill で line-height が増えても伸縮しないよう height で pin。 */
+    height: 52px;
+    min-height: 52px;
+    max-height: 52px;
 }
 
 .input > .unity-base-text-field__input:focus {

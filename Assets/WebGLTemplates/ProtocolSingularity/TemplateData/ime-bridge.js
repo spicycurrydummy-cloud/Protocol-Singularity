@@ -14,6 +14,33 @@
 //   IsAvailable                     — 常に 1
 
 (function () {
+  // ---------------------------------------------------------------
+  // Unity WebGL のキーボードイベント横取り対策 (capture-phase blocker)
+  // ---------------------------------------------------------------
+  // Unity ランタイムは window / document に capture:true で keydown 等を仕掛け、
+  // preventDefault を当てるので HTML input にフォーカスが乗っていても
+  // 英数字や Backspace, 矢印キーが届かない。captureAllKeyboardInput = false
+  // だけでは不十分なので、Unity より先に登録した listener で HTML input
+  // フォーカス時は stopImmediatePropagation する。
+  //
+  // この IIFE は Unity の createUnityInstance より前 (つまり Unity が
+  // listener を登録する前) に実行されるため、同じ capture フェーズでも
+  // こちらが先に発火する。
+  function isEditable(el) {
+    if (!el) return false;
+    var t = el.tagName;
+    return t === "INPUT" || t === "TEXTAREA" || el.isContentEditable === true;
+  }
+  function captureBlocker(e) {
+    if (isEditable(document.activeElement)) {
+      e.stopImmediatePropagation();
+    }
+  }
+  ["keydown", "keyup", "keypress"].forEach(function (type) {
+    window.addEventListener(type, captureBlocker, true);
+    document.addEventListener(type, captureBlocker, true);
+  });
+
   var unityInstance = null;
   var target = "ImeBridge";
   var methodText = "ReceiveImeText";
@@ -41,7 +68,9 @@
     inputEl.autocapitalize = "off";
     inputEl.spellcheck = false;
 
-    // TextField と見分けがつかない程度のターミナル調スタイル。位置は Place で上書き。
+    // Unity 側の TextField (.input > .unity-base-text-field__input) の styling と
+     // padding / font-family / border を一致させて、overlay 非表示時にテキスト位置・
+    // グリフ幅が変わって UI がガタつかないようにする。
     var s = inputEl.style;
     s.position = "fixed";
     s.left = "-9999px";
@@ -49,14 +78,16 @@
     s.width = "0px";
     s.height = "0px";
     s.margin = "0";
-    s.padding = "0 8px";
+    s.padding = "12px 14px";     // Unity USS に合わせる
     s.boxSizing = "border-box";
     s.backgroundColor = "#141C14";
     s.color = "#C8E6C8";
     s.border = "1px solid #3CC878";
     s.borderRadius = "0";
-    s.fontFamily = '"Consolas","Menlo","Courier New",monospace';
-    s.fontSize = "16px";
+    // Unity 側と完全に同じ Noto Sans JP を使う (style.css で @font-face 登録済)。
+    s.fontFamily = '"ProtocolSingularityJP","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif';
+    s.fontSize = "20px";
+    s.lineHeight = "1.1";
     s.letterSpacing = "0";
     s.outline = "none";
     s.zIndex = "1000";
@@ -65,6 +96,15 @@
     // 入力のたび Unity へ全体 value を送る。
     inputEl.addEventListener("input", function (e) {
       e.stopPropagation();
+      if (window.__imeBridgeDebug) console.log("[IME] input:", JSON.stringify(inputEl.value));
+      send(methodText, inputEl.value);
+    });
+
+    // IME 変換確定 (composition commit) 時に明示的に最新 value を送る保険。
+    // 一部ブラウザでは compositionend 後に input event が発火しないケースあり。
+    inputEl.addEventListener("compositionend", function (e) {
+      e.stopPropagation();
+      if (window.__imeBridgeDebug) console.log("[IME] compositionend:", JSON.stringify(inputEl.value));
       send(methodText, inputEl.value);
     });
 
@@ -112,15 +152,18 @@
     if (!canvas) return;
     var rect = canvas.getBoundingClientRect();
     var s = inputEl.style;
+    var fieldH = lastPlace.nh * rect.height;
     s.left = (rect.left + lastPlace.nx * rect.width) + "px";
     s.top  = (rect.top  + lastPlace.ny * rect.height) + "px";
     s.width  = (lastPlace.nw * rect.width) + "px";
-    s.height = (lastPlace.nh * rect.height) + "px";
-    // fontRatio は panel 高さに対する比率 (C# 側で除算済)。canvas 高さに乗算。
+    s.height = fieldH + "px";
+    // lastPlace.fontPx は font-size / field-height の無次元比率 (C# 側で計算済)。
+    // field の CSS 高さに乗算すれば、パネル scale や DPR に依らず Unity と一致する
+    // CSS px 値が得られる。
     if (lastPlace.fontPx && lastPlace.fontPx > 0) {
-      var fs = lastPlace.fontPx * rect.height;
-      if (fs < 10) fs = 10;
-      if (fs > 40) fs = 40;
+      var fs = lastPlace.fontPx * fieldH;
+      if (fs < 8) fs = 8;
+      if (fs > 60) fs = 60;
       s.fontSize = fs + "px";
     }
   }

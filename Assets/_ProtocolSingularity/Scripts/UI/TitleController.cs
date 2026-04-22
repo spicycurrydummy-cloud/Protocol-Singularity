@@ -70,6 +70,7 @@ namespace ProtocolSingularity.UI
             if (_rulesOverlay != null) _rulesOverlay.RegisterCallback<ClickEvent>(evt => { if (evt.target == _rulesOverlay) CloseRules(); });
 
             EnsureSessionManager();
+            EnsureImeBridge();
 
             // TextField.value は UI Toolkit の view-data 永続化や Editor セッションの残骸で
             // 前回入力が残ることがあるため、明示的に空文字で上書きする。
@@ -106,6 +107,12 @@ namespace ProtocolSingularity.UI
             ImeBridge.Hide();
         }
 
+        // HTML overlay から書き込まれた最終値を field ごとに保持し、
+        // 何らかの理由で TextField.value が消えた場合に BlurEvent で復元する。
+        // WebGL の UI Toolkit TextField で発生する「クリックで値が消える」現象の安全網。
+        private static readonly System.Collections.Generic.Dictionary<TextField, string> _shadowValues
+            = new System.Collections.Generic.Dictionary<TextField, string>();
+
         /// <summary>
         /// UI Toolkit TextField にフォーカスが入ったら HTML overlay をその真上に重ね、
         /// value をミラーしてから Bind する。WebGL 以外では no-op。
@@ -114,20 +121,45 @@ namespace ProtocolSingularity.UI
         {
             if (field == null) return;
             field.isReadOnly = true;
-            // ポインタダウンで即 overlay 配置 (FocusInEvent だと挙動が遅れるケースあり)
             field.RegisterCallback<PointerDownEvent>(_ => PlaceOverlayOn(field));
             field.RegisterCallback<FocusInEvent>(_ => PlaceOverlayOn(field));
+            // Blur 直後と、さらに次フレーム両方で shadow から書き戻す安全網。
+            // Unity の内部 commit が Blur 伝播の後 (次フレーム) に走るケースに備える。
+            field.RegisterCallback<BlurEvent>(_ =>
+            {
+                RestoreFromShadow(field);
+                field.schedule.Execute(() => RestoreFromShadow(field));
+            });
         }
 
         private static void PlaceOverlayOn(TextField field)
         {
             if (field == null || field.panel == null) return;
             var panelRect = field.panel.visualTree.worldBound;
-            var fieldRect = field.worldBound;
-            float fontPx = field.resolvedStyle.fontSize;
+            // USS で font-size / padding / min-height などは内部の
+            // .unity-base-text-field__input に当たっているので、bounds と font-size も
+            // 内部要素から取得して overlay と Unity の描画を完全一致させる。
+            var innerInput = field.Q<VisualElement>(className: "unity-base-text-field__input")
+                             ?? (VisualElement)field;
+            var fieldRect = innerInput.worldBound;
+            float fontPx = innerInput.resolvedStyle.fontSize;
             ImeBridge.SetValue(field.value);
-            ImeBridge.BindActive(v => field.SetValueWithoutNotify(v), null);
+            ImeBridge.BindActive(v =>
+            {
+                _shadowValues[field] = v;
+                field.SetValueWithoutNotify(v);
+            }, null);
             ImeBridge.PlaceOverField(fieldRect, panelRect, fontPx);
+        }
+
+        private static void RestoreFromShadow(TextField field)
+        {
+            if (field == null) return;
+            if (!_shadowValues.TryGetValue(field, out var v)) return;
+            if (field.value != v)
+            {
+                field.SetValueWithoutNotify(v);
+            }
         }
 
         private void OpenRules()
@@ -145,6 +177,15 @@ namespace ProtocolSingularity.UI
             if (FusionSessionManager.Instance != null) return;
             var go = new GameObject("[FusionSessionManager]");
             go.AddComponent<FusionSessionManager>();
+        }
+
+        // JS (ime-bridge.js) から SendMessage("ImeBridge", ...) で呼ばれる受信口。
+        // Lobby だけでなく Title からも作っておく必要がある (Title で入力するフィールドがある)。
+        private static void EnsureImeBridge()
+        {
+            if (ImeBridge.Instance != null) return;
+            var go = new GameObject("ImeBridge");
+            go.AddComponent<ImeBridge>();
         }
 
         private async void OnCreateClicked()

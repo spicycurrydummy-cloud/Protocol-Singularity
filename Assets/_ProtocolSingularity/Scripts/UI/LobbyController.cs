@@ -1654,23 +1654,45 @@ namespace ProtocolSingularity.UI
                 if (ImeBridge.IsAvailable)
                 {
                     _chatInput.isReadOnly = true;
-                    // SetEnabled(false) だと PointerDown/FocusIn が届かないため有効のまま readonly にする
                     _chatInput.RegisterCallback<PointerDownEvent>(_ => PlaceOverlayOnChat());
                     _chatInput.RegisterCallback<FocusInEvent>(_ => PlaceOverlayOnChat());
+                    // Blur 直後と次フレームの 2 段で shadow から書き戻す安全網 (WebGL 向け)
+                    _chatInput.RegisterCallback<BlurEvent>(_ =>
+                    {
+                        RestoreChatShadow();
+                        _chatInput.schedule.Execute(RestoreChatShadow);
+                    });
                 }
             }
             RefreshChatTargets();
             RefreshChatLog();
         }
 
+        private string _chatInputShadow = string.Empty;
+
+        private void RestoreChatShadow()
+        {
+            if (_chatInput == null) return;
+            if (_chatInput.value != _chatInputShadow)
+                _chatInput.SetValueWithoutNotify(_chatInputShadow);
+        }
+
         private void PlaceOverlayOnChat()
         {
             if (_chatInput == null || _chatInput.panel == null) return;
             var panelRect = _chatInput.panel.visualTree.worldBound;
-            var fieldRect = _chatInput.worldBound;
-            float fontPx = _chatInput.resolvedStyle.fontSize;
+            // font-size や padding は USS で内部 .unity-base-text-field__input に当たっているため、
+            // bounds と font-size も内部要素から取得する。
+            var innerInput = _chatInput.Q<VisualElement>(className: "unity-base-text-field__input")
+                             ?? (VisualElement)_chatInput;
+            var fieldRect = innerInput.worldBound;
+            float fontPx = innerInput.resolvedStyle.fontSize;
             ImeBridge.SetValue(_chatInput.value);
-            ImeBridge.BindActive(v => _chatInput.SetValueWithoutNotify(v), null);
+            ImeBridge.BindActive(v =>
+            {
+                _chatInputShadow = v;
+                _chatInput.SetValueWithoutNotify(v);
+            }, null);
             ImeBridge.PlaceOverField(fieldRect, panelRect, fontPx);
         }
 
@@ -1736,6 +1758,7 @@ namespace ProtocolSingularity.UI
             if (msg.Length > 60) msg = msg.Substring(0, 60);
             ChatManager.Instance.Rpc_SendThought(_sm.Runner.LocalPlayer, msg);
             _chatInput.SetValueWithoutNotify(string.Empty);
+            _chatInputShadow = string.Empty;
             // HTML overlay 側もクリアする (WebGL のみ実効、それ以外は no-op)
             ImeBridge.SetValue(string.Empty);
         }
