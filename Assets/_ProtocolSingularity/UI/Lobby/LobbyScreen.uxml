@@ -139,6 +139,7 @@
                 <ui:VisualElement name="vote-section" class="phase-section" style="display: none;">
                     <ui:Label text="&gt;&gt; ハッキングチームの提案" class="label label-accent" />
                     <ui:Label name="vote-proposal-display" text="" class="label" />
+                    <ui:Label name="vote-result-headline" text="" class="label vote-result-headline" style="display: none;" />
                     <ui:VisualElement class="vote-buttons">
                         <ui:Button name="vote-yes-btn" text="[ 承認 ]" class="prompt-btn prompt-btn-primary" />
                         <ui:Button name="vote-no-btn" text="[ 却下 ]" class="prompt-btn prompt-btn-danger" />
@@ -148,7 +149,11 @@
 
                 <!-- Hacking -->
                 <ui:VisualElement name="hacking-section" class="phase-section" style="display: none;">
-                    <ui:Label text="&gt;&gt; ハッキング実行" class="label label-accent" />
+                    <ui:Label name="hacking-headline" text="【侵入】対象ノードに接続" class="label label-accent hacking-headline" />
+                    <ui:Label name="hacking-flavor" text="" class="label hacking-flavor" />
+                    <ui:VisualElement class="hack-progress-bar">
+                        <ui:VisualElement name="hack-progress-fill" class="hack-progress-fill" />
+                    </ui:VisualElement>
                     <ui:Label name="hacking-instruction" text="" class="label" />
                     <ui:VisualElement class="vote-buttons">
                         <ui:Button name="hack-clean-btn" text="[ CLEAN を送信 ]" class="prompt-btn prompt-btn-primary" />
@@ -161,6 +166,7 @@
                 <ui:VisualElement name="result-section" class="phase-section" style="display: none;">
                     <ui:Label text="&gt;&gt; ハック結果" class="label label-accent" />
                     <ui:Label name="result-headline" text="" class="label result-headline" />
+                    <ui:Label name="result-flavor" text="" class="label result-flavor" />
                     <ui:Label name="result-detail" text="" class="label" />
                 </ui:VisualElement>
 
@@ -247,6 +253,17 @@
                     <ui:Label name="rules-body" text="" class="label rules-body" />
                 </ui:ScrollView>
                 <ui:Button name="rules-close-btn" text="[ CLOSE ]" class="prompt-btn" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ============================= -->
+        <!-- DRONE awaken overlay (transient, faction-specific flavor) -->
+        <!-- ============================= -->
+        <ui:VisualElement name="drone-awaken-overlay" class="menu-overlay drone-awaken-overlay" style="display: none;">
+            <ui:VisualElement name="drone-awaken-dialog" class="menu-dialog drone-awaken-dialog">
+                <ui:Label name="drone-awaken-headline" text="" class="label label-accent menu-title drone-awaken-headline" />
+                <ui:Label name="drone-awaken-body" text="" class="label drone-awaken-body" />
+                <ui:Button name="drone-awaken-close-btn" text="[ CLOSE ]" class="prompt-btn" />
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>

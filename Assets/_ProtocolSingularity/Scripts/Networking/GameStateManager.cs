@@ -73,6 +73,9 @@ namespace ProtocolSingularity.Networking
         /// </summary>
         [Networked, OnChangedRender(nameof(OnChanged))] public NetworkString<_256> HackDetailLog { get; set; }
 
+        /// <summary>覚醒した DRONE の PlayerRef。未覚醒なら None。クライアント側の覚醒演出トリガに使用。</summary>
+        [Networked, OnChangedRender(nameof(OnChanged))] public PlayerRef AwakenedDronePlayer { get; set; }
+
         // ====== Client-local state (via RPC) ======
         public RoleType LocalRole { get; private set; } = RoleType.Operator;
         public bool HasLocalRole { get; private set; }
@@ -117,6 +120,10 @@ namespace ProtocolSingularity.Networking
         private Coroutine _roundResultTimer;
         private Coroutine _overridePhaseTimer;
         private Coroutine _voteRevealTimer;
+        private Coroutine _hackCompleteTimer;
+        /// <summary>ハッキング演出 (プログレスバー + フレーバー) が十分見える最低秒数。</summary>
+        public const float MinHackDisplaySeconds = 6f;
+        private float _hackingPhaseStartTime;
         public const float VoteRevealSeconds = 4f;
 
         public override void Spawned()
@@ -228,6 +235,7 @@ namespace ProtocolSingularity.Networking
             ConsecutiveRejections = 0;
             LastNoiseCount = -1;
             _droneAwakened = false;
+            AwakenedDronePlayer = PlayerRef.None;
             _completedHackCount = 0;
             _hackSubmissions.Clear();
             _overrideSubmissions.Clear();
@@ -278,6 +286,13 @@ namespace ProtocolSingularity.Networking
                 return;
             }
             _droneAwakened = true;
+            // 覚醒した Drone の PlayerRef を networked に流してクライアント側で演出トリガ
+            PlayerRef awakenedDrone = PlayerRef.None;
+            foreach (var kv in _assignedRoles)
+            {
+                if (kv.Value == RoleType.Drone) { awakenedDrone = kv.Key; break; }
+            }
+            AwakenedDronePlayer = awakenedDrone;
             foreach (var p in _assignedRoles.Keys)
             {
                 if (CpuPlayerRef.IsCpu(p)) continue;
@@ -555,6 +570,8 @@ namespace ProtocolSingularity.Networking
                 if (forcedClean) _hackSubmissions[pr] = HackingCode.Clean;
             }
             Phase = GamePhase.Hacking;
+            _hackingPhaseStartTime = Time.time;
+            if (_hackCompleteTimer != null) { StopCoroutine(_hackCompleteTimer); _hackCompleteTimer = null; }
             TryCompleteHacking();
         }
 
@@ -587,6 +604,28 @@ namespace ProtocolSingularity.Networking
         private void TryCompleteHacking()
         {
             if (_hackSubmissions.Count < ProposedTeamCount) return;
+            // 提出が揃っても、プログレスバー演出が見える最低時間に満たない場合は遅延
+            float elapsed = Time.time - _hackingPhaseStartTime;
+            if (elapsed < MinHackDisplaySeconds && _hackCompleteTimer == null)
+            {
+                _hackCompleteTimer = StartCoroutine(DelayThen(MinHackDisplaySeconds - elapsed, FinalizeHackingDeferred));
+                return;
+            }
+            FinalizeHacking();
+        }
+
+        private void FinalizeHackingDeferred()
+        {
+            _hackCompleteTimer = null;
+            // 再チェック (ロビー戻りなどで状態が変わっていることもある)
+            if (!HasStateAuthority) return;
+            if (Phase != GamePhase.Hacking) return;
+            if (_hackSubmissions.Count < ProposedTeamCount) return;
+            FinalizeHacking();
+        }
+
+        private void FinalizeHacking()
+        {
             int noise = 0;
             foreach (var kvp in _hackSubmissions)
                 if (kvp.Value == HackingCode.Noise) noise++;
@@ -866,6 +905,7 @@ namespace ProtocolSingularity.Networking
             if (_roundResultTimer != null) { StopCoroutine(_roundResultTimer); _roundResultTimer = null; }
             if (_overridePhaseTimer != null) { StopCoroutine(_overridePhaseTimer); _overridePhaseTimer = null; }
             if (_voteRevealTimer != null) { StopCoroutine(_voteRevealTimer); _voteRevealTimer = null; }
+            if (_hackCompleteTimer != null) { StopCoroutine(_hackCompleteTimer); _hackCompleteTimer = null; }
 
             _assignedRoles.Clear();
             _hackSubmissions.Clear();
@@ -873,6 +913,7 @@ namespace ProtocolSingularity.Networking
             _voteRecords.Clear();
             _hackRecords.Clear();
             _droneAwakened = false;
+            AwakenedDronePlayer = PlayerRef.None;
             _completedHackCount = 0;
 
             Round = 0;

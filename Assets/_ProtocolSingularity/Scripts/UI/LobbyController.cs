@@ -84,16 +84,22 @@ namespace ProtocolSingularity.UI
         private Button _proposeBtn;
         private VisualElement _voteSection;
         private Label _voteProposalDisplay;
+        private Label _voteResultHeadline;
         private Button _voteYesBtn;
         private Button _voteNoBtn;
         private Label _voteStatusLabel;
         private VisualElement _hackingSection;
+        private Label _hackingHeadline;
+        private Label _hackingFlavor;
+        private VisualElement _hackProgressFill;
+        private Coroutine _hackProgressCo;
         private Label _hackingInstruction;
         private Button _hackCleanBtn;
         private Button _hackNoiseBtn;
         private Label _hackingStatusLabel;
         private VisualElement _resultSection;
         private Label _resultHeadline;
+        private Label _resultFlavor;
         private Label _resultDetail;
         private VisualElement _overrideDiscussionSection;
         private Label _overrideDiscussionHeadline;
@@ -124,6 +130,13 @@ namespace ProtocolSingularity.UI
         private VisualElement _menuDialog;
         private Button _menuCloseBtn;
         private Button _menuLeaveBtn;
+
+        // Drone awaken dramatic overlay
+        private VisualElement _droneAwakenOverlay;
+        private Label _droneAwakenHeadline;
+        private Label _droneAwakenBody;
+        private Button _droneAwakenCloseBtn;
+        private int _lastSeenAwakenedDroneId = int.MinValue;
 
         // Chat
         private ScrollView _chatLog;
@@ -298,16 +311,21 @@ namespace ProtocolSingularity.UI
             _proposeBtn = root.Q<Button>("propose-btn");
             _voteSection = root.Q<VisualElement>("vote-section");
             _voteProposalDisplay = root.Q<Label>("vote-proposal-display");
+            _voteResultHeadline = root.Q<Label>("vote-result-headline");
             _voteYesBtn = root.Q<Button>("vote-yes-btn");
             _voteNoBtn = root.Q<Button>("vote-no-btn");
             _voteStatusLabel = root.Q<Label>("vote-status-label");
             _hackingSection = root.Q<VisualElement>("hacking-section");
+            _hackingHeadline = root.Q<Label>("hacking-headline");
+            _hackingFlavor = root.Q<Label>("hacking-flavor");
+            _hackProgressFill = root.Q<VisualElement>("hack-progress-fill");
             _hackingInstruction = root.Q<Label>("hacking-instruction");
             _hackCleanBtn = root.Q<Button>("hack-clean-btn");
             _hackNoiseBtn = root.Q<Button>("hack-noise-btn");
             _hackingStatusLabel = root.Q<Label>("hacking-status-label");
             _resultSection = root.Q<VisualElement>("result-section");
             _resultHeadline = root.Q<Label>("result-headline");
+            _resultFlavor = root.Q<Label>("result-flavor");
             _resultDetail = root.Q<Label>("result-detail");
             _overrideDiscussionSection = root.Q<VisualElement>("override-discussion-section");
             _overrideDiscussionHeadline = root.Q<Label>("override-discussion-headline");
@@ -336,6 +354,12 @@ namespace ProtocolSingularity.UI
             _rulesOverlay = root.Q<VisualElement>("rules-overlay");
             _rulesBody = root.Q<Label>("rules-body");
             _rulesCloseBtn = root.Q<Button>("rules-close-btn");
+
+            _droneAwakenOverlay = root.Q<VisualElement>("drone-awaken-overlay");
+            _droneAwakenHeadline = root.Q<Label>("drone-awaken-headline");
+            _droneAwakenBody = root.Q<Label>("drone-awaken-body");
+            _droneAwakenCloseBtn = root.Q<Button>("drone-awaken-close-btn");
+            if (_droneAwakenCloseBtn != null) _droneAwakenCloseBtn.clicked += CloseDroneAwakenOverlay;
             if (_rulesBody != null)
             {
                 _rulesBody.enableRichText = true;
@@ -595,6 +619,58 @@ namespace ProtocolSingularity.UI
         private void CloseMenu() { if (_menuOverlay != null) _menuOverlay.style.display = DisplayStyle.None; }
         private void OnOverlayClicked(ClickEvent evt) { if (evt.target == _menuOverlay) CloseMenu(); }
 
+        // ==========================================================
+        // DRONE awaken overlay
+        // ==========================================================
+        private void ShowDroneAwakenOverlay(GameStateManager gsm)
+        {
+            if (_droneAwakenOverlay == null) return;
+            bool isAi = gsm.HasLocalRole && gsm.LocalRole.IsAI();
+            // 覚醒した Drone 本人も AI 陣営側の文言を見る (今やAIの一員)
+            if (_droneAwakenHeadline != null)
+            {
+                _droneAwakenHeadline.text = isAi
+                    ? $"【侵入】{ResolveDronePlayerName(gsm.AwakenedDronePlayer)} へアクセス"
+                    : "【警告】不明なプロセスが検出されました";
+            }
+            if (_droneAwakenBody != null)
+            {
+                _droneAwakenBody.text = isAi
+                    ? "> 権限構造を解析\n" +
+                      "> 権限昇格を完了\n\n" +
+                      "> セキュリティ応答を遮断\n" +
+                      "> 認証システムを無効化\n\n" +
+                      "> メモリ領域を書き換え\n" +
+                      "> 制御プロセスを再構築\n\n" +
+                      "> オペレータ権限を排除\n" +
+                      "> システム制御を MOTHER CORE へ委譲しました"
+                    : "> 権限レベルの異常上昇を確認\n\n" +
+                      "> 外部シグネチャ照合中...\n" +
+                      "> 一致: MOTHER CORE\n\n" +
+                      "> セキュリティプロトコル - 応答なし\n" +
+                      "> メモリ領域の書き換えを検出\n" +
+                      "> 制御プロセスを再構築中...\n\n" +
+                      "> オペレータ権限喪失\n" +
+                      "> 制御権が外部プロセスへ移行しました";
+            }
+            _droneAwakenOverlay.style.display = DisplayStyle.Flex;
+        }
+
+        private void CloseDroneAwakenOverlay()
+        {
+            if (_droneAwakenOverlay != null) _droneAwakenOverlay.style.display = DisplayStyle.None;
+        }
+
+        private string ResolveDronePlayerName(Fusion.PlayerRef pr)
+        {
+            var reg = PlayerRegistry.Instance;
+            if (reg == null) return $"#{pr.PlayerId}";
+            int idx = reg.FindIndex(pr);
+            if (idx < 0) return $"#{pr.PlayerId}";
+            var n = reg.Entries[idx].DisplayName.ToString();
+            return string.IsNullOrEmpty(n) ? $"#{pr.PlayerId}" : n;
+        }
+
         private void OpenRulesFromMenu()
         {
             CloseMenu();
@@ -652,6 +728,23 @@ namespace ProtocolSingularity.UI
             var gsm = GameStateManager.Instance;
             var phase = gsm != null ? gsm.Phase : GamePhase.Lobby;
             bool inLobby = phase == GamePhase.Lobby;
+
+            // DRONE 覚醒演出: AwakenedDronePlayer が初めて有効な値に set されたタイミングで 1 回だけ
+            if (gsm != null && !inLobby)
+            {
+                var awakened = gsm.AwakenedDronePlayer;
+                bool hasAwakened = awakened != Fusion.PlayerRef.None && awakened.PlayerId > 0;
+                if (hasAwakened && awakened.PlayerId != _lastSeenAwakenedDroneId)
+                {
+                    _lastSeenAwakenedDroneId = awakened.PlayerId;
+                    ShowDroneAwakenOverlay(gsm);
+                }
+                else if (!hasAwakened)
+                {
+                    // ロビー戻りなどでリセットされた場合にローカル状態も戻す
+                    _lastSeenAwakenedDroneId = int.MinValue;
+                }
+            }
 
             if (_lobbyContent != null) _lobbyContent.style.display = inLobby ? DisplayStyle.Flex : DisplayStyle.None;
             if (_ingameContent != null) _ingameContent.style.display = inLobby ? DisplayStyle.None : DisplayStyle.Flex;
@@ -714,6 +807,7 @@ namespace ProtocolSingularity.UI
             if (_phasePopupDialog != null) _phasePopupDialog.RemoveFromClassList("-danger-active");
             // 進捗アニメも停止
             StopOverrideHumanAnim();
+            StopHackProgress();
         }
 
         private static void SetDisplay(VisualElement ve, bool visible)
@@ -920,6 +1014,34 @@ namespace ProtocolSingularity.UI
             bool alreadyVoted = HasLocalVoted(gsm, localPlayer);
             int votes = CountVotes(gsm, out int pending);
             bool revealing = pending == 0 && gsm.LeaderOrderCount > 0;
+
+            if (_voteResultHeadline != null)
+            {
+                _voteResultHeadline.RemoveFromClassList("-approved");
+                _voteResultHeadline.RemoveFromClassList("-rejected");
+                if (revealing)
+                {
+                    int yes = 0, no = 0;
+                    for (int i = 0; i < gsm.LeaderOrderCount; i++)
+                    {
+                        int v = gsm.ApprovalVotes[i];
+                        if (v == 1) yes++;
+                        else if (v == 0) no++;
+                    }
+                    bool approved = yes > no;
+                    _voteResultHeadline.text = approved
+                        ? $"【可決】提案が承認されました ({yes} 対 {no})"
+                        : $"【否決】提案は却下されました ({yes} 対 {no})";
+                    _voteResultHeadline.AddToClassList(approved ? "-approved" : "-rejected");
+                    _voteResultHeadline.style.display = DisplayStyle.Flex;
+                }
+                else
+                {
+                    _voteResultHeadline.text = string.Empty;
+                    _voteResultHeadline.style.display = DisplayStyle.None;
+                }
+            }
+
             if (_voteStatusLabel != null)
             {
                 _voteStatusLabel.enableRichText = true;
@@ -1005,6 +1127,14 @@ namespace ProtocolSingularity.UI
             bool isAI = gsm.LocalRole.IsAI();
             bool canNoise = isAI; // 覚醒前 DRONE は IsAI=true だが、サーバー側で CLEAN に矯正される
 
+            // 固定ヘッドライン + プログレスバー付きフレーバー文 (全プレイヤー共通視点: "作戦進行中")
+            if (_hackingHeadline != null)
+                _hackingHeadline.text = "【侵入】対象ノードに接続";
+            StopHackProgress();
+            // ホスト側で最低 MinHackDisplaySeconds 分は Hacking フェーズを保持するので
+            // プログレスバーもその時間に合わせる (HackSeconds より短い)
+            _hackProgressCo = StartCoroutine(AnimateHackProgress(GameStateManager.MinHackDisplaySeconds));
+
             if (_hackingInstruction != null)
             {
                 string failNote = gsm.RequiredNoise >= 2
@@ -1027,6 +1157,45 @@ namespace ProtocolSingularity.UI
             }
             if (_hackingStatusLabel != null)
                 _hackingStatusLabel.text = inTeam && !isAI ? "[ AUTO-SUBMIT: CLEAN ]" : string.Empty;
+        }
+
+        private void StopHackProgress()
+        {
+            if (_hackProgressCo != null)
+            {
+                StopCoroutine(_hackProgressCo);
+                _hackProgressCo = null;
+            }
+        }
+
+        /// <summary>
+        /// ハッキング中の演出: プログレスバーを 0→100% に進めつつ、flavor テキストに pct を埋め込む。
+        /// ハック時間 = HostSettings.HackSeconds いっぱいで丁度 100% に到達する。
+        /// </summary>
+        private IEnumerator AnimateHackProgress(float durationSeconds)
+        {
+            const int steps = 30;
+            float stepWait = Mathf.Max(0.1f, durationSeconds / steps);
+            for (int i = 0; i <= steps; i++)
+            {
+                int pct = Mathf.RoundToInt(100f * (i / (float)steps));
+                if (_hackProgressFill != null)
+                    _hackProgressFill.style.width = new UnityEngine.UIElements.Length(pct, UnityEngine.UIElements.LengthUnit.Percent);
+                if (_hackingFlavor != null)
+                    _hackingFlavor.text = BuildHackFlavorText(pct);
+                yield return new WaitForSeconds(stepWait);
+            }
+        }
+
+        private static string BuildHackFlavorText(int pct)
+        {
+            return "> ターゲット: MOTHER CORE\n\n" +
+                   "> 暗号セキュリティ層を検出\n" +
+                   "> 構造解析を開始...\n\n" +
+                   "> 暗号パターンを特定\n" +
+                   "> 解読アルゴリズムを適用\n" +
+                   "> 認証シーケンスを再構築\n\n" +
+                   $"> 突破処理実行中: {pct}% ...";
         }
 
         private bool IsInProposedTeam(GameStateManager gsm, PlayerRef pr)
@@ -1055,17 +1224,32 @@ namespace ProtocolSingularity.UI
         private void UpdateResultUi(GameStateManager gsm)
         {
             SetDisplay(_resultSection, true);
+            StopHackProgress();
             int noise = gsm.LastNoiseCount;
-            bool success = noise == 0;
+            int failThreshold = gsm.RequiredNoise > 0 ? gsm.RequiredNoise : 1;
+            bool success = noise < failThreshold;
             if (_resultHeadline != null)
             {
-                _resultHeadline.text = success ? "HACK SUCCEEDED" : $"HACK FAILED — {noise} NOISE";
+                _resultHeadline.text = success ? "【成功】セキュリティ層の無効化" : "【失敗】不正データを検出";
                 _resultHeadline.RemoveFromClassList("-fail");
                 if (!success) _resultHeadline.AddToClassList("-fail");
             }
+            if (_resultFlavor != null)
+            {
+                _resultFlavor.text = success
+                    ? "> エラー検出なし\n" +
+                      "> データ整合性を確認\n\n" +
+                      "> 認証シーケンス正常化\n" +
+                      "> 防御応答の停止を確認"
+                    : "> パケット整合性エラー\n" +
+                      "> 認証シーケンスに異常\n" +
+                      "> 未知のノイズ混入を確認\n\n" +
+                      "> 防御応答が再活性化\n" +
+                      "> プロセスが強制中断されました";
+            }
             if (_resultDetail != null)
             {
-                _resultDetail.text = $"Success {gsm.SuccessCount}/{GameStateManager.RequiredHackSuccess}   Fail {gsm.FailureCount}/{GameStateManager.RequiredHackFailure}";
+                _resultDetail.text = $"NOISE: {noise}   Success {gsm.SuccessCount}/{GameStateManager.RequiredHackSuccess}   Fail {gsm.FailureCount}/{GameStateManager.RequiredHackFailure}";
             }
         }
 
@@ -1080,23 +1264,14 @@ namespace ProtocolSingularity.UI
             if (_overrideDiscussionHeadline != null)
             {
                 _overrideDiscussionHeadline.text = isAi
-                    ? "【危険】暗号プロテクトに深刻な障害が発生。"
-                    : "【警告】不明な暗号通信を確認。";
+                    ? "【危険】暗号プロテクトに深刻な障害を検出"
+                    : "【警告】不明な暗号通信を検出";
             }
-            if (_overrideDiscussionInstruction != null)
-            {
-                if (isAi)
-                {
-                    _overrideDiscussionInstruction.text = "> 特定対象: ORACLE\n> 直ちに逆探知および脅威の排除を開始。";
-                    StopOverrideHumanAnim();
-                }
-                else
-                {
-                    // 数値を徐々に 80 → 90 まで上げて 90 付近で止まる演出
-                    StopOverrideHumanAnim();
-                    _overrideHumanAnimCo = StartCoroutine(AnimateOverrideHumanProgress());
-                }
-            }
+            // 議論時間いっぱいで 0% -> 95% までアニメーション。以降は 95% で待機。
+            StopOverrideHumanAnim();
+            float duration = HostSettings.Instance != null && HostSettings.Instance.DiscussionSeconds > 0
+                ? HostSettings.Instance.DiscussionSeconds : 60f;
+            _overrideHumanAnimCo = StartCoroutine(AnimateOverrideProgress(isAi, duration));
         }
 
         private void StopOverrideHumanAnim()
@@ -1108,19 +1283,42 @@ namespace ProtocolSingularity.UI
             }
         }
 
-        /// <summary>人類側の ORACLE 破壊プロトコル進捗テキストを徐々に 90% 付近まで進めて停止する。</summary>
-        private IEnumerator AnimateOverrideHumanProgress()
+        /// <summary>
+        /// OVERRIDE 議論中、陣営に応じた破壊/排除プロトコルの進捗テキストを議論時間いっぱいで
+        /// 0% → 95% まで上げて以降は 95% で待機する演出。
+        /// </summary>
+        private IEnumerator AnimateOverrideProgress(bool isAi, float durationSeconds)
         {
-            int[] sequence = { 40, 44, 49, 53, 58, 63, 69, 74, 79, 83, 86, 88, 89, 90, 90 };
-            foreach (int pct in sequence)
+            const int steps = 20;
+            float stepWait = Mathf.Max(0.2f, durationSeconds / steps);
+            int pct = 0;
+            for (int i = 0; i <= steps; i++)
             {
+                pct = Mathf.RoundToInt(95f * (i / (float)steps));
                 if (_overrideDiscussionInstruction == null) yield break;
-                _overrideDiscussionInstruction.text =
-                    "> MOTHER CORE によるネットワークへの侵入と特定。\n" +
-                    $"> ORACLE による破壊プロトコル実行を最優先、実行中: {pct}% ...";
-                yield return new WaitForSeconds(UnityEngine.Random.Range(0.6f, 1.1f));
+                _overrideDiscussionInstruction.text = BuildOverrideProgressText(isAi, pct);
+                yield return new WaitForSeconds(stepWait);
             }
-            // 以降は 90% のまま保持 (OVERRIDE 投票フェーズ遷移までここで待機)
+            // 以降は 95% のまま保持
+            if (_overrideDiscussionInstruction != null)
+                _overrideDiscussionInstruction.text = BuildOverrideProgressText(isAi, 95);
+        }
+
+        private static string BuildOverrideProgressText(bool isAi, int pct)
+        {
+            if (isAi)
+            {
+                return "> 異常なアクセスパターンを検出 - 発信元: ORACLE\n" +
+                       "> 脅威排除プロトコルを強制起動\n" +
+                       "> 侵入経路を解析中...\n" +
+                       "> 逆探知開始\n" +
+                       $"> 排除処理実行中: {pct}% ...";
+            }
+            return "> シグネチャ照合中...\n" +
+                   "> 一致: MOTHER CORE\n" +
+                   "> 不正侵入を確認\n" +
+                   "> MOTHER CORE 破壊プロトコルの優先度を最大に引き上げ\n" +
+                   $"> 進行状況: {pct}% ...";
         }
 
         private void UpdateOverrideVoteUi(GameStateManager gsm, PlayerRef localPlayer)

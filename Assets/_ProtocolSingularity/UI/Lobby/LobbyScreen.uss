@@ -865,3 +865,89 @@
 .player-badge-cpu {
     color: rgb(140, 180, 220);
 }
+
+/* Vote result headline — 可決 / 否決 の大見出し */
+.vote-result-headline {
+    font-size: 22px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    padding: 6px 12px;
+    margin: 8px 0;
+    border-width: 1px;
+}
+
+.vote-result-headline.-approved {
+    color: rgb(120, 255, 180);
+    background-color: rgba(20, 60, 40, 0.5);
+    border-color: rgb(80, 255, 170);
+}
+
+.vote-result-headline.-rejected {
+    color: rgb(255, 140, 140);
+    background-color: rgba(60, 20, 20, 0.5);
+    border-color: rgb(255, 120, 120);
+}
+
+/* Hacking progress bar */
+.hack-progress-bar {
+    height: 10px;
+    background-color: rgb(10, 20, 14);
+    border-width: 1px;
+    border-color: rgb(60, 128, 88);
+    margin: 8px 0 10px 0;
+}
+
+.hack-progress-fill {
+    height: 100%;
+    width: 0;
+    background-color: rgb(80, 255, 170);
+}
+
+.hacking-headline {
+    font-size: 18px;
+    -unity-font-style: bold;
+    color: rgb(255, 200, 120);
+    margin-bottom: 6px;
+}
+
+.hacking-flavor {
+    color: rgb(200, 230, 200);
+    white-space: normal;
+    margin: 0 0 4px 0;
+}
+
+.result-flavor {
+    color: rgb(200, 230, 200);
+    white-space: normal;
+    margin: 6px 0;
+}
+
+/* DRONE awakening overlay — transient dramatic reveal */
+.drone-awaken-overlay {
+    /* menu-overlay base + slightly darker backdrop for impact */
+    background-color: rgba(0, 0, 0, 0.85);
+}
+
+.drone-awaken-dialog {
+    min-width: 520px;
+    max-width: 640px;
+    padding: 24px 32px;
+    background-color: rgb(18, 10, 10);
+    border-color: rgb(255, 80, 80);
+    border-width: 2px;
+}
+
+.drone-awaken-headline {
+    color: rgb(255, 120, 120);
+    font-size: 22px;
+    -unity-font-style: bold;
+    margin-bottom: 14px;
+    white-space: normal;
+}
+
+.drone-awaken-body {
+    color: rgb(230, 200, 180);
+    font-size: 15px;
+    white-space: normal;
+    margin-bottom: 16px;
+}
