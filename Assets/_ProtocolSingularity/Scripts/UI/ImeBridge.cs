@@ -64,6 +64,14 @@ namespace ProtocolSingularity.UI
             Instance = this;
             gameObject.name = "ImeBridge";
             DontDestroyOnLoad(gameObject);
+
+            // Unity WebGL ランタイムはデフォルトで window のキーボードイベントを奪う
+            // (preventDefault)。HTML overlay に入力させるには false にする必要がある。
+            // 日本語 IME は composition 経路のため true でも動くが、アルファベット /
+            // Backspace / 矢印キーなど通常キーは Unity が食べてしまい、overlay に届かない。
+#if UNITY_WEBGL && !UNITY_EDITOR
+            UnityEngine.WebGLInput.captureAllKeyboardInput = false;
+#endif
         }
 
         /// <summary>JS (ime-bridge.js) からの SendMessage 受信口 — value 全体。</summary>

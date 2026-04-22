@@ -63,18 +63,24 @@
     s.display = "none";
 
     // 入力のたび Unity へ全体 value を送る。
-    inputEl.addEventListener("input", function () {
+    inputEl.addEventListener("input", function (e) {
+      e.stopPropagation();
       send(methodText, inputEl.value);
     });
 
-    // Enter で送信 (変換中は無視)。
+    // キーイベントは Unity の window リスナーに渡さない (念のための二重防御)。
+    // captureAllKeyboardInput=false と併用して Unity にキーが漏れないようにする。
+    function stop(e) { e.stopPropagation(); }
     inputEl.addEventListener("keydown", function (e) {
+      e.stopPropagation();
       if (e.isComposing) return;
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         send(methodSubmit, "");
       }
     });
+    inputEl.addEventListener("keyup", stop);
+    inputEl.addEventListener("keypress", stop);
 
     inputEl.addEventListener("focus", function () {
       s.borderColor = "#50FFAA";
