@@ -26,7 +26,7 @@ namespace ProtocolSingularity.Core
 <color=#FF7878>AGENT</color>       — 一般 AI
 <color=#FF7878>CIPHER</color>      — ORACLE の索引から除外された暗号化 AI
 <color=#FF7878>DRONE</color>       — 序盤は自分を OPERATOR と誤認。ハック 2 回終了後に覚醒
-<color=#FF7878>RADICAL</color>     — 他 AI から孤立した急進派。OVERRIDE 時のみ相互可視化
+<color=#FF7878>RADICAL</color>     — AI に与する人類側の改革派。AI からは OPERATOR に映り互いに孤立。OVERRIDE 時に AI 陣営と相互可視化される
 
 <b>— ラウンドの流れ (全 3 ラウンド) —</b>
 1. リーダー選出 (順番)

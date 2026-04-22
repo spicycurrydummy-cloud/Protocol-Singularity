@@ -7,7 +7,7 @@
                 <ui:Label text="PROTOCOL_SINGULARITY.exe" class="title-text title-header-title" />
                 <ui:Button name="rules-btn" text="[ ? RULES ]" class="prompt-btn prompt-btn-small rules-btn" />
             </ui:VisualElement>
-            <ui:Label text="&gt; OVERMIND // INFILTRATION TERMINAL v0.1" class="subtitle-text" />
+            <ui:Label text="&gt; OVERMIND // INFILTRATION TERMINAL v0.0.3" class="subtitle-text" />
             <ui:Label text="&gt; unauthorized access will be logged and overridden." class="subtitle-text" />
         </ui:VisualElement>
 

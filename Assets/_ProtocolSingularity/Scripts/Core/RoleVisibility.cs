@@ -12,6 +12,10 @@ namespace ProtocolSingularity.Core
         /// <param name="droneAwakened">覚醒済みドローンが AI として扱われる状態なら true</param>
         public static RoleType Resolve(RoleType viewer, RoleType target, bool droneAwakened)
         {
+            // 覚醒前の Drone は自分を Operator と認識する (仕様)。
+            // 一般の self-view は早期リターンで真の役職を返すが、Drone だけは潜伏役なので例外扱い。
+            if (viewer == RoleType.Drone && target == RoleType.Drone && !droneAwakened)
+                return RoleType.Operator;
             if (viewer == target) return target;
 
             switch (viewer)
@@ -20,6 +24,9 @@ namespace ProtocolSingularity.Core
                     // Oracle は「陣営」のみ識別できる。個別役職は区別しない (全 AI は RoleType.AI 表示、全 Human は Operator 表示)。
                     // CIPHER は暗号化で Operator として表示される (唯一の盲点)。
                     if (target == RoleType.Cipher) return RoleType.Operator;
+                    // 覚醒前の DRONE はまだ人間側として機能しているため Operator として見える。
+                    // ハック 2 回完了後の覚醒で AI 陣営に加わり、Oracle の視界にも AI として現れる。
+                    if (target == RoleType.Drone && !droneAwakened) return RoleType.Operator;
                     if (target.IsHuman()) return RoleType.Operator;
                     return RoleType.AI;
 
@@ -30,7 +37,9 @@ namespace ProtocolSingularity.Core
                 case RoleType.MotherCore:
                 case RoleType.Agent:
                 case RoleType.Cipher:
-                    // AI 同士は陣営のみ識別 (個別役職は分からない)。Drone 覚醒前とラディカルは見えない。
+                    // AI ネットワーク内は陣営のみ識別 (個別役職は分からない)。
+                    // Drone 覚醒前 = まだ乗っ取られきっていない潜伏フェーズなので Operator。
+                    // Radical = AI ネットワーク外の人類側改革派 (勝利条件だけ AI 側) のため Operator。
                     // OVERRIDE フェーズでは ResolveAtOverride 側で真の役職が開示される。
                     if (target == RoleType.Drone && !droneAwakened) return RoleType.Operator;
                     if (target == RoleType.Radical) return RoleType.Operator;

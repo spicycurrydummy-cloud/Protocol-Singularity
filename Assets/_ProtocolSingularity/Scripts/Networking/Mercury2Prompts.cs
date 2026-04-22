@@ -19,7 +19,7 @@ Rules (concise):
 - Each round: Leader proposes a hack team (size varies by round, see <current-phase>.team_size_this_round and .round_table) → all vote Approve/Reject (majority Approve executes) → team secretly submits CLEAN or NOISE.
 - Humans always submit CLEAN (forced). AI and awakened DRONE may submit NOISE. Hack FAILS when NOISE >= noise_needed_to_fail (usually 1, but larger-count late rounds need 2).
 - Win: 3 Humans hack SUCCESS + OVERRIDE misses Oracle → Human wins. 3 FAILS or 5 consecutive Rejects or OVERRIDE hits real Oracle → AI wins. The ""5 consecutive Rejects"" clause is a hard loss condition for Humans — always check <current-phase>.consecutive_rejections before voting reject.
-- Roles: ORACLE sees only FACTION — all humans appear as ""Operator"" and all AI appear as ""AI"". CIPHER fools ORACLE and looks like ""Operator"". ADMIN sees Oracle+MotherCore both as ""Oracle"" (can't tell which). OPERATOR sees nothing. AI teammates (MOTHER_CORE, AGENT, CIPHER, and awakened DRONE) see each other as FACTION only (""AI"" label, no individual role). DRONE wakes after 2 hacks. RADICAL is isolated and sees other AI as Operator until OVERRIDE phase, when all AI (incl. Radical) are revealed to each other with true roles for the final vote.
+- Roles: ORACLE sees only FACTION — all humans appear as ""Operator"" and all AI appear as ""AI"". CIPHER fools ORACLE and looks like ""Operator"". ADMIN sees Oracle+MotherCore both as ""Oracle"" (can't tell which). OPERATOR sees nothing. AI teammates (MOTHER_CORE, AGENT, CIPHER, and awakened DRONE) see each other as FACTION only (""AI"" label, no individual role). DRONE wakes after 2 hacks and starts looking like an Operator (even to itself) until then. RADICAL is a HUMAN reformist who sides with AI in the win condition: they appear as ""Operator"" to the AI team too (AI teammates CANNOT see RADICAL as AI), so they are isolated from other AI. RADICAL can still submit NOISE on hacks and wins if AI wins. During OVERRIDE all AI (incl. Radical) are revealed to each other with true roles for the final vote.
 
 STRICT output rules:
 1. Respond ONLY with the required JSON matching the schema. No markdown, no prose outside JSON.
@@ -290,7 +290,7 @@ STRICT output rules:
                     }
                     if (radicalN > 0)
                     {
-                        sb.Append($"- RADICAL (x{radicalN}) is present: still counts as AI-faction in your view (you see them as apparent_role=AI).\n");
+                        sb.Append($"- RADICAL (x{radicalN}) is a HUMAN reformist who sides with AI at the win-condition level. To you (Oracle) their allegiance shows as AI, so they are already counted in your seen-AI tally. Their lineup-role slot is on the AI-win side.\n");
                     }
                     if (droneN > 0)
                     {
@@ -316,8 +316,8 @@ STRICT output rules:
                       .Append($"Expected (excluding yourself, excluding Radical, Drone={(ctx.Gsm.HostDroneAwakened ? "awakened" : "hidden")}): {expectedVisibleAi}.\n");
                     if (radicalN > 0)
                     {
-                        sb.Append($"- RADICAL (x{radicalN}) is present but invisible to you until OVERRIDE phase. ")
-                          .Append("RADICAL is an ALLY (AI faction), do not accuse or target them as AI in voting/hacking logic.\n");
+                        sb.Append($"- RADICAL (x{radicalN}) is a HUMAN reformist siding with AI — they share your WIN condition but are not part of your AI network, so you see them as Operator and they see you as Operator. They can still submit NOISE and will be revealed as AI to you in OVERRIDE phase. ")
+                          .Append("Treat them as an unseen ally: do not accuse them publicly as AI (they appear human to the whole table).\n");
                     }
                     if (droneN > 0 && !ctx.Gsm.HostDroneAwakened)
                     {
@@ -333,7 +333,7 @@ STRICT output rules:
                     break;
 
                 case RoleType.Radical:
-                    sb.Append("- You are isolated: other AI appear as Operator to you and you appear as Operator to them. ")
+                    sb.Append("- You are a HUMAN reformist siding with AI at the win level. Other AI appear as Operator to you and you appear as Operator to them (to humans AND to AI teammates). ")
                       .Append("During OVERRIDE phase all AI (incl. you) are revealed to each other. Until then, play as a rogue AI without allies.\n");
                     break;
 

@@ -500,7 +500,7 @@ namespace ProtocolSingularity.UI
                 _roleLineupList.Add(BuildRoleRow("AGENT (basic AI)", _roleIncludeAgent ? 1 : 0, isAi: true, fixedRole: false, enabled: _roleIncludeAgent, toggleValue: _roleIncludeAgent, onChange: v => { _roleIncludeAgent = v; PushSettings(); RefreshRoleLineup(); }));
                 _roleLineupList.Add(BuildRoleRow("CIPHER (hidden from ORACLE)", _roleIncludeCipher ? 1 : 0, isAi: true, fixedRole: false, enabled: _roleIncludeCipher, toggleValue: _roleIncludeCipher, onChange: v => { _roleIncludeCipher = v; PushSettings(); RefreshRoleLineup(); }));
                 _roleLineupList.Add(BuildRoleRow("DRONE (awakens mid-game)", _roleIncludeDrone ? 1 : 0, isAi: true, fixedRole: false, enabled: _roleIncludeDrone, toggleValue: _roleIncludeDrone, onChange: v => { _roleIncludeDrone = v; PushSettings(); RefreshRoleLineup(); }));
-                _roleLineupList.Add(BuildRoleRow("RADICAL (isolated AI)", _roleIncludeRadical ? 1 : 0, isAi: true, fixedRole: false, enabled: _roleIncludeRadical, toggleValue: _roleIncludeRadical, onChange: v => { _roleIncludeRadical = v; PushSettings(); RefreshRoleLineup(); }));
+                _roleLineupList.Add(BuildRoleRow("RADICAL (human reformist, AI-aligned)", _roleIncludeRadical ? 1 : 0, isAi: true, fixedRole: false, enabled: _roleIncludeRadical, toggleValue: _roleIncludeRadical, onChange: v => { _roleIncludeRadical = v; PushSettings(); RefreshRoleLineup(); }));
             }
 
             if (_roleEditBtn != null)
@@ -1380,7 +1380,7 @@ namespace ProtocolSingularity.UI
                 RoleType.Agent      => "標準 AI\nNOISE 混入でハックを妨害",
                 RoleType.Cipher     => "ORACLE の索引から除外された暗号化 AI\nORACLE から Operator と誤認される",
                 RoleType.Drone      => "序盤は自分を Operator と誤認\n2 ハック終了後に AI として覚醒",
-                RoleType.Radical    => "孤立した急進派 AI\nOVERRIDE 時のみ他 AI と合流",
+                RoleType.Radical    => "AI に与する人類陣営の改革派\nAI からは Operator として認識される",
                 _                   => "",
             };
             return $"{faction}\n{desc}";
