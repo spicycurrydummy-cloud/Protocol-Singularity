@@ -1336,14 +1336,22 @@ namespace ProtocolSingularity.UI
             RefreshIngamePlayerList();
         }
 
+        private int _lastRoleDiagPhase = -1;
         private void UpdateRoleDisplay()
         {
             var gsm = GameStateManager.Instance;
             if (gsm == null) return;
             if (!gsm.HasLocalRole)
             {
-                if (_roleLabel != null) _roleLabel.text = "...awaiting briefing...";
-                if (_factionLabel != null) _factionLabel.text = string.Empty;
+                // 発生条件診断: phase / HasStateAuthority / Runner ありなし
+                int p = (int)gsm.Phase;
+                if (p != _lastRoleDiagPhase)
+                {
+                    _lastRoleDiagPhase = p;
+                    Debug.Log($"[UI] role display stuck on 受信中. phase={gsm.Phase} HasStateAuthority={gsm.HasStateAuthority} Runner={(_sm?.Runner != null)} LocalPlayerId={_sm?.Runner?.LocalPlayer.PlayerId}");
+                }
+                if (_roleLabel != null) _roleLabel.text = "... 役職を受信中 ...";
+                if (_factionLabel != null) _factionLabel.text = "ホストからの割り当てを待っています";
                 return;
             }
             if (_roleLabel != null)

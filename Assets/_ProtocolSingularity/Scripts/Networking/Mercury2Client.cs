@@ -23,13 +23,17 @@ namespace ProtocolSingularity.Networking
             string userPrompt,
             string schemaName,
             string jsonSchemaBody,
-            CancellationToken ct)
+            CancellationToken ct,
+            float? temperatureOverride = null)
         {
             var cfg = Mercury2ConfigLoader.Current;
             if (cfg == null || !cfg.IsConfigured) return null;
 
             var url = cfg.endpoint.TrimEnd('/') + "/chat/completions";
-            var body = BuildRequestBody(cfg.model, systemPrompt, userPrompt, schemaName, jsonSchemaBody);
+            // 決断系 (vote/hack/override/team) は 0.4 で安定重視、チャットは 0.95 で多様化。
+            // ChatCompose のみ呼び出し側で 0.95 を渡す。
+            float temp = temperatureOverride ?? 0.4f;
+            var body = BuildRequestBody(cfg.model, systemPrompt, userPrompt, schemaName, jsonSchemaBody, temp);
 
             try
             {
@@ -124,12 +128,14 @@ namespace ProtocolSingularity.Networking
         }
 
         private static string BuildRequestBody(string model, string systemPrompt, string userPrompt,
-            string schemaName, string jsonSchemaBody)
+            string schemaName, string jsonSchemaBody, float temperature)
         {
             var sb = new StringBuilder(2048);
             sb.Append('{');
             sb.Append("\"model\":").Append(JsonString(model)).Append(',');
-            sb.Append("\"temperature\":0.4,");
+            sb.Append("\"temperature\":")
+              .Append(temperature.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))
+              .Append(',');
             sb.Append("\"messages\":[");
             sb.Append("{\"role\":\"system\",\"content\":").Append(JsonString(systemPrompt)).Append("},");
             sb.Append("{\"role\":\"user\",\"content\":").Append(JsonString(userPrompt)).Append("}");

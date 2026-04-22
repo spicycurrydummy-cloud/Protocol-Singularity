@@ -119,12 +119,14 @@ namespace ProtocolSingularity.Networking
                 return await _fallback.ComposeChatAsync(ctx, ct);
             }
 
+            // chat のみ高温度 (0.95) で言い回しの多様化を狙う。他の意思決定は 0.4 維持。
             var json = await Mercury2Client.ChatJsonAsync(
                 Mercury2Prompts.SystemPrompt,
                 Mercury2Prompts.BuildChatPrompt(ctx),
                 "CpuChat",
                 Mercury2Prompts.ChatSchema,
-                ct);
+                ct,
+                temperatureOverride: 0.95f);
             if (string.IsNullOrEmpty(json))
             {
                 // Mercury2 設定済みなのに失敗 = ネットワーク/認証問題。Random フォールバックは

@@ -1,5 +1,6 @@
 using System;
 using Fusion;
+using ProtocolSingularity.Core;
 using UnityEngine;
 
 namespace ProtocolSingularity.Networking
@@ -77,6 +78,14 @@ namespace ProtocolSingularity.Networking
             if (idx < 0) return;
             for (int i = idx; i < Count - 1; i++) Entries.Set(i, Entries[i + 1]);
             Count--;
+
+            // ゲーム進行中にプレイヤーが抜けたら一旦全員ロビーへ戻す (セッション完結型のため)
+            var gsm = GameStateManager.Instance;
+            if (gsm != null && gsm.Phase != GamePhase.Lobby)
+            {
+                UnityEngine.Debug.Log($"[PlayerRegistry] Player {pr.PlayerId} left mid-game (phase={gsm.Phase}). Forcing lobby return.");
+                gsm.HostReturnToLobby();
+            }
         }
 
         public bool RegisterCpu(string name)

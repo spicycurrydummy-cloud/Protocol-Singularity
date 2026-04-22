@@ -127,6 +127,44 @@ namespace ProtocolSingularity.Networking
             Changed?.Invoke();
         }
 
+        /// <summary>
+        /// クライアント側: フェーズ変化を [Networked] で検知した直後に役職未受信なら
+        /// 1 回だけ再送要求を送る。さらに 3 秒後に再試行を 1 回だけ実行する (計 2 回まで)。
+        /// Update で毎フレーム送るのは Photon 帯域の無駄なので避ける。
+        /// </summary>
+        private Coroutine _roleRequestRetry;
+        private void MaybeRequestRoleOnPhaseChange()
+        {
+            if (Runner == null) return;
+            if (HasStateAuthority) return;
+            if (HasLocalRole) return;
+            if (Phase == GamePhase.Lobby || Phase == GamePhase.GameEnd) return;
+            if (_roleRequestRetry != null) return;
+            Debug.Log($"[GSM] Client missing role after phase change -> requesting (phase={Phase} localPid={Runner.LocalPlayer.PlayerId})");
+            Rpc_RequestRoleView(Runner.LocalPlayer);
+            _roleRequestRetry = StartCoroutine(RoleRequestRetryCoroutine());
+        }
+
+        private System.Collections.IEnumerator RoleRequestRetryCoroutine()
+        {
+            yield return new WaitForSeconds(3f);
+            if (!HasStateAuthority && !HasLocalRole && Runner != null
+                && Phase != GamePhase.Lobby && Phase != GamePhase.GameEnd)
+            {
+                Debug.Log($"[GSM] Role still not received after 3s; retry 1 (phase={Phase}).");
+                Rpc_RequestRoleView(Runner.LocalPlayer);
+            }
+            _roleRequestRetry = null;
+        }
+
+        [Rpc(RpcSources.All, RpcTargets.StateAuthority, Channel = RpcChannel.Reliable)]
+        private void Rpc_RequestRoleView(PlayerRef requester)
+        {
+            if (!HasStateAuthority) return;
+            Debug.Log($"[GSM] Rpc_RequestRoleView from PlayerId={requester.PlayerId}");
+            DeliverRoleView(requester);
+        }
+
         public override void Despawned(NetworkRunner runner, bool hasState)
         {
             if (Instance == this) Instance = null;
@@ -204,9 +242,14 @@ namespace ProtocolSingularity.Networking
             OverrideVoteCount = 0;
             OverrideSucceeded = false;
 
+            Debug.Log($"[GSM] HostBeginGame: assigning {_assignedRoles.Count} roles to {players.Count} players");
             foreach (var p in players)
             {
-                if (CpuPlayerRef.IsCpu(p)) continue; // CPU は実クライアントに届ける必要なし
+                if (CpuPlayerRef.IsCpu(p))
+                {
+                    Debug.Log($"[GSM] skip CPU PlayerId={p.PlayerId}");
+                    continue;
+                }
                 DeliverRoleView(p);
             }
 
@@ -248,7 +291,19 @@ namespace ProtocolSingularity.Networking
         // ==========================================================
         private void DeliverRoleView(PlayerRef target, VisibilityMode mode = VisibilityMode.InGame)
         {
-            if (!_assignedRoles.TryGetValue(target, out var myRole)) return;
+            if (!_assignedRoles.TryGetValue(target, out var myRole))
+            {
+                Debug.LogWarning($"[GSM] DeliverRoleView: no role assigned for PlayerId={target.PlayerId} (mode={mode})");
+                return;
+            }
+            // 覚醒前の DRONE は自分を Operator として認識する (仕様)。
+            // - 視界計算は本来の役職 (Drone) ベース → 他 AI は Operator として見える (既に RoleVisibility 側で処理)
+            // - 通知される「自分の役職」だけ Operator に差し替える
+            var selfRoleToSend = myRole;
+            if (myRole == RoleType.Drone && !_droneAwakened && mode == VisibilityMode.InGame)
+            {
+                selfRoleToSend = RoleType.Operator;
+            }
             var sb = new StringBuilder(256);
             foreach (var kvp in _assignedRoles)
             {
@@ -257,12 +312,14 @@ namespace ProtocolSingularity.Networking
                     : RoleVisibility.Resolve(myRole, kvp.Value, _droneAwakened);
                 sb.Append(kvp.Key.PlayerId).Append(':').Append((int)visible).Append('|');
             }
-            Rpc_DeliverRoleView(target, (int)myRole, sb.ToString());
+            Debug.Log($"[GSM] DeliverRoleView -> RPC target PlayerId={target.PlayerId} role={selfRoleToSend} (true={myRole}) mode={mode} payloadLen={sb.Length}");
+            Rpc_DeliverRoleView(target, (int)selfRoleToSend, sb.ToString());
         }
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All, Channel = RpcChannel.Reliable)]
         private void Rpc_DeliverRoleView([RpcTarget] PlayerRef target, int myRoleInt, NetworkString<_512> visibilityData)
         {
+            Debug.Log($"[GSM] Rpc_DeliverRoleView received on LocalPlayer={(Runner != null ? Runner.LocalPlayer.PlayerId : -1)} targetPid={target.PlayerId} role={(RoleType)myRoleInt}");
             LocalRole = (RoleType)myRoleInt;
             HasLocalRole = true;
             _localVisibility.Clear();
@@ -875,6 +932,10 @@ namespace ProtocolSingularity.Networking
             }
         }
 
-        private void OnChanged() => Changed?.Invoke();
+        private void OnChanged()
+        {
+            Changed?.Invoke();
+            MaybeRequestRoleOnPhaseChange();
+        }
     }
 }

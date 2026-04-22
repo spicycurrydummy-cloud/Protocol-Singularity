@@ -18,7 +18,7 @@ namespace ProtocolSingularity.Networking
 Rules (concise):
 - Each round: Leader proposes a hack team (size varies by round, see <current-phase>.team_size_this_round and .round_table) → all vote Approve/Reject (majority Approve executes) → team secretly submits CLEAN or NOISE.
 - Humans always submit CLEAN (forced). AI and awakened DRONE may submit NOISE. Hack FAILS when NOISE >= noise_needed_to_fail (usually 1, but larger-count late rounds need 2).
-- Win: 3 Humans hack SUCCESS + OVERRIDE misses Oracle → Human wins. 3 FAILS or 5 consecutive Rejects or OVERRIDE hits real Oracle → AI wins.
+- Win: 3 Humans hack SUCCESS + OVERRIDE misses Oracle → Human wins. 3 FAILS or 5 consecutive Rejects or OVERRIDE hits real Oracle → AI wins. The ""5 consecutive Rejects"" clause is a hard loss condition for Humans — always check <current-phase>.consecutive_rejections before voting reject.
 - Roles: ORACLE sees only FACTION — all humans appear as ""Operator"" and all AI appear as ""AI"". CIPHER fools ORACLE and looks like ""Operator"". ADMIN sees Oracle+MotherCore both as ""Oracle"" (can't tell which). OPERATOR sees nothing. AI teammates (MOTHER_CORE, AGENT, CIPHER, and awakened DRONE) see each other as FACTION only (""AI"" label, no individual role). DRONE wakes after 2 hacks. RADICAL is isolated and sees other AI as Operator until OVERRIDE phase, when all AI (incl. Radical) are revealed to each other with true roles for the final vote.
 
 STRICT output rules:
@@ -164,8 +164,10 @@ STRICT output rules:
             var myName = GetName(ctx, ctx.Self);
             sb.Append("Produce ONE chat line (Japanese, <=60 chars) that directly reacts to the content above.\n")
               .Append($"You are {myName}. Speak in first person as {myName}. NEVER refer to {myName} in third person, NEVER write @{myName}.\n")
-              .Append("Required: reference at least one of — a specific @player_name (someone OTHER than yourself), the current leader, the proposed team, the last hack result, or a specific prior chat line.\n")
-              .Append("Forbidden: empty filler like \"静観する\" / \"様子見\" / \"了解\" / \"慎重に\".\n")
+              .Append("The line MUST be tied to something concrete (an @player, the leader, a vote, a hack result, or a chat line) — but you have freedom in HOW you phrase it.\n")
+              .Append("Voice variety: some lines short, some conversational; use question / assertion / deduction / doubt / agreement forms; mix abrupt and explanatory. Match your personality trait.\n")
+              .Append("Forbidden: empty filler like \"静観する\" / \"様子見\" / \"了解\" / \"慎重に\". ")
+              .Append("Also avoid repeating the exact sentence shape of your own previous [YOU] lines in the timeline — if your last [YOU] line started with \"@Xは怪しい\", use a different structure this time.\n")
               .Append("Output only JSON: {\"message\":\"...\"}.");
             return sb.ToString();
         }
@@ -479,7 +481,26 @@ STRICT output rules:
             sb.Append($"- noise_needed_to_fail: {g.RequiredNoise}\n");
             sb.Append($"- success_hacks: {g.SuccessCount}\n");
             sb.Append($"- failed_hacks: {g.FailureCount}\n");
-            sb.Append($"- consecutive_rejections: {g.ConsecutiveRejections}\n");
+            int rejects = g.ConsecutiveRejections;
+            int rejectsToLoss = System.Math.Max(0, 5 - rejects);
+            sb.Append($"- consecutive_rejections: {rejects} / 5\n");
+            sb.Append($"- rejects_until_ai_win: {rejectsToLoss}   (IMPORTANT: 5th consecutive reject = instant AI VICTORY)\n");
+            if (rejects >= 3)
+            {
+                sb.Append("- REJECTION_DANGER: ");
+                if (rejects >= 4)
+                {
+                    sb.Append("NEXT reject ends the game as AI WIN. ")
+                      .Append("Humans MUST approve this proposal unless literally every team member is confirmed AI. ")
+                      .Append("AI players: votes are PUBLIC — a reject here is a massive tell that outs you. ")
+                      .Append("Only reject if (a) you have cover (other suspected AI will also reject) AND (b) you're confident the majority of rejects will flip the vote. Otherwise APPROVE to stay hidden; there are other win paths (NOISE on the hack, OVERRIDE).\n");
+                }
+                else
+                {
+                    sb.Append("Reject track is getting dangerous. One more reject puts humans on the edge. ")
+                      .Append("For AI: public vote — rejecting now starts to look coordinated. Weigh exposure vs. pressure.\n");
+                }
+            }
             sb.Append($"- leader_player_id: {g.CurrentLeader.PlayerId}\n");
             if (g.ProposedTeamCount > 0)
             {

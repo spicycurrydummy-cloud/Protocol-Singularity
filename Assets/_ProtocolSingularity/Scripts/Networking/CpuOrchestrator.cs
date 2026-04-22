@@ -106,8 +106,13 @@ namespace ProtocolSingularity.Networking
                 personality = PersonalityPool[_rng.Next(PersonalityPool.Length)];
                 _personalities[cpu] = personality;
             }
+            // 覚醒前の DRONE は自分を Operator と認識する (仕様): role を差し替えて LLM に渡す。
+            // hack 周りの分岐 (role.IsAI() で NOISE 可否判定) も自動的に Human 扱いになる。
+            // ホストの LookupRole は真の役職を返すので他プレイヤーの可視性計算には影響しない。
+            var selfRoleView = (role == RoleType.Drone && !gsm.HostDroneAwakened)
+                ? RoleType.Operator : role;
             return new CpuContext(
-                cpu, role, gsm, reg,
+                cpu, selfRoleView, gsm, reg,
                 ChatManager.Instance,
                 _rng,
                 gsm.TryGetHostRoleAsNullable,
@@ -249,11 +254,27 @@ namespace ProtocolSingularity.Networking
                 if (_hackDoneFor.Contains(p)) continue;
                 if (!gsm.TryGetHostRole(p, out var role)) continue;
                 if (role.IsHuman()) continue;
+                // 覚醒前の DRONE は AI 陣営だが自覚がないため、NOISE 判断をさせず CLEAN 直送する。
+                if (role == RoleType.Drone && !gsm.HostDroneAwakened)
+                {
+                    _hackDoneFor.Add(p);
+                    var capturedPreAwake = p;
+                    StartCoroutine(RunAfterDelay(RandomThinkSeconds(),
+                        () => SubmitCleanPreAwakeAsync(capturedPreAwake, gsm)));
+                    continue;
+                }
                 _hackDoneFor.Add(p);
                 var capturedP = p;
                 var capturedRole = role;
                 StartCoroutine(RunAfterDelay(RandomThinkSeconds(), () => RunHackAsync(capturedP, capturedRole, gsm, reg)));
             }
+        }
+
+        private Task SubmitCleanPreAwakeAsync(PlayerRef member, GameStateManager gsm)
+        {
+            if (gsm == null || gsm.Phase != GamePhase.Hacking) return Task.CompletedTask;
+            gsm.Rpc_SubmitHackCode(member, (int)HackingCode.Clean);
+            return Task.CompletedTask;
         }
 
         private async Task RunHackAsync(PlayerRef member, RoleType role, GameStateManager gsm, PlayerRegistry reg)
