@@ -19,9 +19,9 @@ namespace ProtocolSingularity.Networking
         public static CpuOrchestrator Instance { get; private set; }
 
         [Tooltip("CPU が意思決定するまでの最小秒数 (思考遅延)")]
-        public float MinThinkSeconds = 3f;
+        public float MinThinkSeconds = 4f;
         [Tooltip("CPU が意思決定するまでの最大秒数")]
-        public float MaxThinkSeconds = 8f;
+        public float MaxThinkSeconds = 18f;
 
         private readonly Dictionary<PlayerRef, ICpuBrain> _brains = new();
         private readonly Dictionary<PlayerRef, string> _personalities = new();
@@ -258,15 +258,31 @@ namespace ProtocolSingularity.Networking
         }
 
         // ==========================================================
-        // Chat: 各 CPU が 1 フェーズで 1 回発言機会を得る (delay 後)
+        // Chat: 1 フェーズで抽選された最大 N 名の CPU が発言 (API コスト抑制)
         // ==========================================================
+        private const int MaxChattersPerPhase = 2;
+
         private void ScheduleChat(GameStateManager gsm, PlayerRegistry reg)
         {
+            // 未発言の CPU 候補を収集
+            var candidates = new List<PlayerRef>();
             for (int i = 0; i < gsm.LeaderOrderCount; i++)
             {
                 var p = gsm.LeaderOrder[i];
                 if (!CpuPlayerRef.IsCpu(p)) continue;
                 if (_chatDoneFor.Contains(p)) continue;
+                if (!gsm.TryGetHostRole(p, out _)) continue;
+                candidates.Add(p);
+            }
+            if (candidates.Count == 0) return;
+
+            // ランダムに最大 N 名選出。全員 1 フェーズに発言すると API 上限に当たるため抽選制。
+            int pick = System.Math.Min(MaxChattersPerPhase, candidates.Count);
+            for (int i = 0; i < pick; i++)
+            {
+                int idx = _rng.Next(candidates.Count);
+                var p = candidates[idx];
+                candidates.RemoveAt(idx);
                 if (!gsm.TryGetHostRole(p, out var role)) continue;
                 _chatDoneFor.Add(p);
                 var captured = p;
