@@ -1,7 +1,35 @@
 {
-  "_comment": "Protocol Singularity - Inception Labs Mercury 2 API credentials. Copy this file to 'mercury2-config.json' and fill in your local values. CI/CD should generate the real file from GitHub Secrets at build time.",
-  "apiKey": "REPLACE_WITH_YOUR_API_KEY",
+  "_comment": "Protocol Singularity - LLM API credentials. Multiple OpenAI-compatible providers can be listed in 'providers' and will be tried in order (fallback on 402/429/5xx). The flat apiKey/endpoint/model fields are kept for backward compatibility and treated as the final fallback provider.",
+
+  "providers": [
+    {
+      "name": "mercury2",
+      "apiKey": "REPLACE_WITH_YOUR_API_KEY",
+      "endpoint": "https://api.inceptionlabs.ai/v1",
+      "model": "mercury-2",
+      "timeoutSeconds": 30
+    },
+    {
+      "_comment": "Optional: OpenRouter gives you access to many models via a single key. Remove or fill as needed.",
+      "name": "openrouter",
+      "apiKey": "REPLACE_WITH_OPENROUTER_KEY",
+      "endpoint": "https://openrouter.ai/api/v1",
+      "model": "openai/gpt-4o-mini",
+      "timeoutSeconds": 30
+    },
+    {
+      "_comment": "Optional: direct OpenAI. Remove if unused.",
+      "name": "openai",
+      "apiKey": "REPLACE_WITH_OPENAI_KEY",
+      "endpoint": "https://api.openai.com/v1",
+      "model": "gpt-4o-mini",
+      "timeoutSeconds": 30
+    }
+  ],
+
+  "_legacy_comment": "Legacy single-provider fields (used if 'providers' is empty/missing).",
+  "apiKey": "",
   "endpoint": "https://api.inceptionlabs.ai/v1",
-  "timeoutSeconds": 30,
-  "model": "mercury-2"
+  "model": "mercury-2",
+  "timeoutSeconds": 30
 }

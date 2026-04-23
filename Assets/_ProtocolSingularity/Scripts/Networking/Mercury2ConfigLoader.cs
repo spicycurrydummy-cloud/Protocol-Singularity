@@ -52,7 +52,15 @@ namespace ProtocolSingularity.Networking
                 Current = config;
                 IsLoaded = true;
                 if (config != null && config.IsConfigured)
-                    Debug.Log($"[Mercury2] Config loaded: endpoint={config.endpoint} model={config.model}");
+                {
+                    var sb = new System.Text.StringBuilder();
+                    foreach (var p in config.GetActiveProviders())
+                    {
+                        if (sb.Length > 0) sb.Append(" | ");
+                        sb.Append($"{p.name ?? "?"}:{p.model}@{p.endpoint}");
+                    }
+                    Debug.Log($"[Mercury2] Config loaded with {config.GetActiveProviders().Count} provider(s): {sb}");
+                }
                 Loaded?.Invoke(config);
                 return config;
             }

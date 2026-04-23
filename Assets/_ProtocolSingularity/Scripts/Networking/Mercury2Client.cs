@@ -15,8 +15,9 @@ namespace ProtocolSingularity.Networking
     public static class Mercury2Client
     {
         /// <summary>
-        /// system + user プロンプトを POST し、structured_output の JSON 文字列を返す。
-        /// 設定未ロード / タイムアウト / HTTP エラー時は null。
+        /// プロバイダを順番に試し、最初に成功した応答を返す。402/429 (クォータ・レート) や
+        /// ネットワーク系エラーの場合は次のプロバイダにフォールバック。全部失敗したら null。
+        /// 成功したプロバイダは static に記憶し、次回以降そこから試行する (無駄な失敗コール削減)。
         /// </summary>
         public static async Task<string> ChatJsonAsync(
             string systemPrompt,
@@ -28,13 +29,53 @@ namespace ProtocolSingularity.Networking
         {
             var cfg = Mercury2ConfigLoader.Current;
             if (cfg == null || !cfg.IsConfigured) return null;
+            var providers = cfg.GetActiveProviders();
+            if (providers.Count == 0) return null;
 
-            var url = cfg.endpoint.TrimEnd('/') + "/chat/completions";
-            // 決断系 (vote/hack/override/team) は 0.4 で安定重視、チャットは 0.95 で多様化。
-            // ChatCompose のみ呼び出し側で 0.95 を渡す。
             float temp = temperatureOverride ?? 0.4f;
-            var body = BuildRequestBody(cfg.model, systemPrompt, userPrompt, schemaName, jsonSchemaBody, temp);
 
+            // 直近成功プロバイダから始めて、失敗したら順番に次へ
+            int startIdx = System.Math.Min(_preferredProviderIndex, providers.Count - 1);
+            for (int offset = 0; offset < providers.Count; offset++)
+            {
+                int idx = (startIdx + offset) % providers.Count;
+                if (ct.IsCancellationRequested) return null;
+                var provider = providers[idx];
+                var result = await TryOneAsync(provider, systemPrompt, userPrompt, schemaName, jsonSchemaBody, temp, ct);
+                if (result.success)
+                {
+                    _preferredProviderIndex = idx;
+                    return result.content;
+                }
+                if (!result.retriable)
+                {
+                    // スキーマ違反や 4xx (402 以外)、5xx などで次へ行っても無意味な系はフォールバックせず即 null
+                    // ただし「無料枠枯渇」系はフォールバックしたいので 402 は retriable 扱い
+                    return null;
+                }
+                Debug.LogWarning($"[Mercury2] Provider '{provider.name}' failed ({result.code}); trying next...");
+            }
+            Debug.LogWarning($"[Mercury2] All {providers.Count} provider(s) failed for {schemaName}.");
+            return null;
+        }
+
+        private static int _preferredProviderIndex;
+
+        private struct TryResult
+        {
+            public bool success;
+            public bool retriable;
+            public long code;
+            public string content;
+        }
+
+        private static async Task<TryResult> TryOneAsync(
+            Mercury2Provider provider,
+            string systemPrompt, string userPrompt, string schemaName, string jsonSchemaBody,
+            float temperature, CancellationToken ct)
+        {
+            var url = provider.endpoint.TrimEnd('/') + "/chat/completions";
+            var body = BuildRequestBody(provider.model, systemPrompt, userPrompt, schemaName, jsonSchemaBody, temperature);
             try
             {
                 using var req = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST);
@@ -42,38 +83,39 @@ namespace ProtocolSingularity.Networking
                 req.uploadHandler = new UploadHandlerRaw(bytes) { contentType = "application/json" };
                 req.downloadHandler = new DownloadHandlerBuffer();
                 req.SetRequestHeader("Content-Type", "application/json");
-                req.SetRequestHeader("Authorization", "Bearer " + cfg.apiKey);
-                req.timeout = Math.Max(5, cfg.timeoutSeconds);
+                req.SetRequestHeader("Authorization", "Bearer " + provider.apiKey);
+                req.timeout = Math.Max(5, provider.timeoutSeconds);
 
                 var op = req.SendWebRequest();
                 while (!op.isDone)
                 {
-                    if (ct.IsCancellationRequested) { req.Abort(); return null; }
+                    if (ct.IsCancellationRequested) { req.Abort(); return new TryResult { success = false, retriable = false }; }
                     await Task.Yield();
                 }
 
+                long code = req.responseCode;
                 if (req.result != UnityWebRequest.Result.Success)
                 {
-                    Debug.LogWarning($"[Mercury2] HTTP failed ({schemaName}): {req.error} code={req.responseCode}\n body={req.downloadHandler?.text}");
-                    return null;
+                    // 402 / 429 / 5xx / ネット系はフォールバック対象
+                    bool retriable = code == 402 || code == 429 || code >= 500 || code == 0;
+                    Debug.LogWarning($"[Mercury2] '{provider.name}' HTTP {code} ({schemaName}): {req.error}\n body={req.downloadHandler?.text}");
+                    return new TryResult { success = false, retriable = retriable, code = code };
                 }
 
                 var raw = req.downloadHandler.text;
                 var content = ExtractContent(raw);
                 if (string.IsNullOrEmpty(content))
                 {
-                    Debug.LogWarning($"[Mercury2] Response had no extractable content ({schemaName}): {raw}");
+                    Debug.LogWarning($"[Mercury2] '{provider.name}' response had no extractable content ({schemaName}): {raw}");
+                    return new TryResult { success = false, retriable = true, code = code };
                 }
-                else
-                {
-                    Debug.Log($"[Mercury2] {schemaName} -> {content}");
-                }
-                return content;
+                Debug.Log($"[Mercury2:{provider.name}] {schemaName} -> {content}");
+                return new TryResult { success = true, content = content, code = code };
             }
             catch (Exception e)
             {
-                Debug.LogError($"[Mercury2] Request exception: {e.Message}");
-                return null;
+                Debug.LogError($"[Mercury2] '{provider.name}' exception: {e.Message}");
+                return new TryResult { success = false, retriable = true, code = -1 };
             }
         }
 
