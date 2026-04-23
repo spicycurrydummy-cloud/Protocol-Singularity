@@ -96,8 +96,10 @@ namespace ProtocolSingularity.Networking
                 long code = req.responseCode;
                 if (req.result != UnityWebRequest.Result.Success)
                 {
-                    // 402 / 429 / 5xx / ネット系はフォールバック対象
-                    bool retriable = code == 402 || code == 429 || code >= 500 || code == 0;
+                    // プロバイダごとに機能差があるので (例: Groq は一部モデルで json_schema 非対応の 400)、
+                    // 基本すべての HTTP 失敗を次プロバイダに流す。
+                    // 明確に認証エラーとわかる 401/403 だけは同じキーの問題なので打ち切り。
+                    bool retriable = !(code == 401 || code == 403);
                     Debug.LogWarning($"[Mercury2] '{provider.name}' HTTP {code} ({schemaName}): {req.error}\n body={req.downloadHandler?.text}");
                     return new TryResult { success = false, retriable = retriable, code = code };
                 }
