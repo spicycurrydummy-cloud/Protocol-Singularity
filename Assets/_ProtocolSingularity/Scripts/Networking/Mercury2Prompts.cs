@@ -310,9 +310,17 @@ Output rules:
                     counts.TryGetValue(RoleType.Agent, out int agentN);
                     int expectedVisibleAi = mcN + agentN + cipherN - 1;
                     if (ctx.Gsm.HostDroneAwakened) expectedVisibleAi += droneN;
-                    sb.Append($"- seen AI (others) ={seenAi} / expected={expectedVisibleAi} (drone={(ctx.Gsm.HostDroneAwakened ? "awake" : "hidden")}).\n");
-                    if (radicalN > 0) sb.Append($"- RADICAL x{radicalN} is hidden ally (appears Operator; do not out them).\n");
-                    if (droneN > 0 && !ctx.Gsm.HostDroneAwakened) sb.Append("- DRONE hidden pre-awakening.\n");
+                    sb.Append($"- lineup totals: MC={mcN}, Agent={agentN}, Cipher={cipherN}, Drone={droneN}, Radical={radicalN}, AI total={totalAi}.\n");
+                    sb.Append($"- seen AI (others)={seenAi} / expected_visible={expectedVisibleAi}.\n");
+                    // 完全可視の場合は「潜伏 AI なし」を明言して余計な推測を抑える
+                    if (seenAi >= expectedVisibleAi && droneN == 0 && radicalN == 0)
+                        sb.Append("- NO HIDDEN AI on the board. Every AI is already visible to you. Do NOT speculate about extra hidden AI.\n");
+                    if (droneN > 0)
+                    {
+                        if (ctx.Gsm.HostDroneAwakened) sb.Append($"- DRONE x{droneN} is AWAKE and counted in seen.\n");
+                        else sb.Append($"- DRONE x{droneN} hidden until 2 hacks complete (you can't see them yet).\n");
+                    }
+                    if (radicalN > 0) sb.Append($"- RADICAL x{radicalN} is a hidden human ally (looks Operator; do not out them).\n");
                     break;
 
                 case RoleType.Drone:
@@ -403,7 +411,14 @@ Output rules:
                     if (j > 0) sb.Append(',');
                     sb.Append(r.Team[j].PlayerId);
                 }
-                sb.Append($"] noise={r.NoiseCount} result=").Append(r.Success ? "SUCCESS" : "FAIL").Append('\n');
+                sb.Append($"] noise={r.NoiseCount} result=").Append(r.Success ? "SUCCESS" : "FAIL");
+                // 自分がこのハックのチームに居たなら、自分の投票を自分にだけ教える (公開情報化はしない)。
+                if (r.Submissions != null && r.Team.Contains(ctx.Self)
+                    && r.Submissions.TryGetValue(ctx.Self, out var myCode))
+                {
+                    sb.Append(" [YOU: submitted ").Append(myCode == HackingCode.Noise ? "NOISE" : "CLEAN").Append(']');
+                }
+                sb.Append('\n');
             }
             sb.Append("</hack-history>\n\n");
 

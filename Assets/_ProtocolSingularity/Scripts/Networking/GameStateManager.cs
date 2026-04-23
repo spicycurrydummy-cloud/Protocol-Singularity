@@ -111,6 +111,11 @@ namespace ProtocolSingularity.Networking
             public List<PlayerRef> Team;
             public int NoiseCount;
             public bool Success;
+            /// <summary>
+            /// ホスト専用の個別投票内訳。公開情報にはしないが、CPU ブレインは「自分が過去に
+            /// 何を投げたか」を参照して推理に使える。clients には同期されない。
+            /// </summary>
+            public Dictionary<PlayerRef, HackingCode> Submissions;
         }
 
         /// <summary>ホスト専用: 過去ラウンドの提案・投票履歴 (CPU ブレインのコンテキスト用)。</summary>
@@ -641,7 +646,8 @@ namespace ProtocolSingularity.Networking
             _hackRecords.Add(new HackRecord
             {
                 Round = Round, Leader = CurrentLeader,
-                Team = hackTeam, NoiseCount = noise, Success = success
+                Team = hackTeam, NoiseCount = noise, Success = success,
+                Submissions = new Dictionary<PlayerRef, HackingCode>(_hackSubmissions)
             });
             RebuildHackDetailLog();
 
