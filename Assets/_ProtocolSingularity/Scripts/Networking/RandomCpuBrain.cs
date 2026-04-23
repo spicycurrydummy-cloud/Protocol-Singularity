@@ -20,8 +20,8 @@ namespace ProtocolSingularity.Networking
         public Task<List<PlayerRef>> ChooseTeamAsync(CpuContext ctx, CancellationToken ct)
             => Task.FromResult(ChooseTeam(ctx));
 
-        public Task<bool> ChooseVoteAsync(CpuContext ctx, CancellationToken ct)
-            => Task.FromResult(ChooseVote(ctx));
+        public Task<VoteChoice> ChooseVoteAsync(CpuContext ctx, CancellationToken ct)
+            => Task.FromResult(new VoteChoice(ChooseVote(ctx), null));
 
         public Task<bool> ChooseHackNoiseAsync(CpuContext ctx, CancellationToken ct)
             => Task.FromResult(ChooseHackNoise(ctx));

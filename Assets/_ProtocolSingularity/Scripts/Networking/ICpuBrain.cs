@@ -12,13 +12,25 @@ namespace ProtocolSingularity.Networking
     /// 実装は CpuOrchestrator からホスト上でのみ呼び出される（StateAuthority 上で完結）。
     /// Mercury2 のような非同期 API 実装と乱数ベースのフォールバックを切り替えられるように Task<> を返す。
     /// </summary>
+    /// <summary>投票決定 + 行動と同時の公開発言（オプショナル）。</summary>
+    public readonly struct VoteChoice
+    {
+        public readonly bool Approve;
+        public readonly string PublicRationale; // 60 char 前後、空なら chat は流さない
+        public VoteChoice(bool approve, string publicRationale)
+        {
+            Approve = approve;
+            PublicRationale = publicRationale;
+        }
+    }
+
     public interface ICpuBrain
     {
         /// <summary>リーダー時: 自分を含むチームメンバー (size=TeamSize) を選ぶ。</summary>
         Task<List<PlayerRef>> ChooseTeamAsync(CpuContext ctx, CancellationToken ct);
 
-        /// <summary>提案チームを承認するかどうか。</summary>
-        Task<bool> ChooseVoteAsync(CpuContext ctx, CancellationToken ct);
+        /// <summary>提案チームを承認するかどうか。action と公開発言は同時生成される。</summary>
+        Task<VoteChoice> ChooseVoteAsync(CpuContext ctx, CancellationToken ct);
 
         /// <summary>ハッキングフェーズで NOISE を送出するかどうか（AI 役のみ呼ばれる）。</summary>
         Task<bool> ChooseHackNoiseAsync(CpuContext ctx, CancellationToken ct);

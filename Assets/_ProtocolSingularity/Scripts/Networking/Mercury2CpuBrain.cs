@@ -63,9 +63,9 @@ namespace ProtocolSingularity.Networking
             return team;
         }
 
-        public async Task<bool> ChooseVoteAsync(CpuContext ctx, CancellationToken ct)
+        public async Task<VoteChoice> ChooseVoteAsync(CpuContext ctx, CancellationToken ct)
         {
-            if (!HasConfig) return _fallback.ChooseVote(ctx);
+            if (!HasConfig) return new VoteChoice(_fallback.ChooseVote(ctx), null);
 
             var json = await Mercury2Client.ChatJsonAsync(
                 Mercury2Prompts.SystemPrompt,
@@ -73,9 +73,14 @@ namespace ProtocolSingularity.Networking
                 "ApprovalVote",
                 Mercury2Prompts.VoteSchema,
                 ct);
-            if (string.IsNullOrEmpty(json)) return _fallback.ChooseVote(ctx);
+            if (string.IsNullOrEmpty(json)) return new VoteChoice(_fallback.ChooseVote(ctx), null);
 
-            return ExtractBool(json, "approve") ?? _fallback.ChooseVote(ctx);
+            bool approve = ExtractBool(json, "approve") ?? _fallback.ChooseVote(ctx);
+            // 同一 LLM 呼び出し内の reasoning をそのまま公開発言として流す → 行動と発言が必ず一致
+            string rationale = ExtractString(json, "reasoning");
+            if (!string.IsNullOrEmpty(rationale) && rationale.Length > 60)
+                rationale = rationale.Substring(0, 60);
+            return new VoteChoice(approve, rationale);
         }
 
         public async Task<bool> ChooseHackNoiseAsync(CpuContext ctx, CancellationToken ct)
@@ -119,14 +124,15 @@ namespace ProtocolSingularity.Networking
                 return await _fallback.ComposeChatAsync(ctx, ct);
             }
 
-            // chat のみ高温度 (0.95) で言い回しの多様化を狙う。他の意思決定は 0.4 維持。
+            // chat はやや高温度 (0.8) で言い回しの多様化。thinking フィールド併用で
+            // CoT による論理の飛躍を防ぎつつ、表現は揺らすバランス。
             var json = await Mercury2Client.ChatJsonAsync(
                 Mercury2Prompts.SystemPrompt,
                 Mercury2Prompts.BuildChatPrompt(ctx),
                 "CpuChat",
                 Mercury2Prompts.ChatSchema,
                 ct,
-                temperatureOverride: 0.95f);
+                temperatureOverride: 0.8f);
             if (string.IsNullOrEmpty(json))
             {
                 // Mercury2 設定済みなのに失敗 = ネットワーク/認証問題。Random フォールバックは

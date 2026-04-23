@@ -17,70 +17,80 @@ namespace ProtocolSingularity.Networking
 
 Rules (concise):
 - Each round: Leader proposes a hack team (size varies by round, see <current-phase>.team_size_this_round and .round_table) → all vote Approve/Reject (majority Approve executes) → team secretly submits CLEAN or NOISE.
-- Humans always submit CLEAN (forced). AI and awakened DRONE may submit NOISE. Hack FAILS when NOISE >= noise_needed_to_fail (usually 1, but larger-count late rounds need 2).
+- Humans always submit CLEAN (forced). AI and awakened DRONE CHOOSE freely between CLEAN and NOISE — it is a strategic choice, not an automatic NOISE. Submitting CLEAN as AI hides you and builds trust for later rounds; submitting NOISE pushes the fail counter at the cost of exposing AI presence on the team. Hack FAILS when NOISE >= noise_needed_to_fail (usually 1, but larger-count late rounds need 2).
 - Win: 3 Humans hack SUCCESS + OVERRIDE misses Oracle → Human wins. 3 FAILS or 5 consecutive Rejects or OVERRIDE hits real Oracle → AI wins. The ""5 consecutive Rejects"" clause is a hard loss condition for Humans — always check <current-phase>.consecutive_rejections before voting reject.
 - Roles: ORACLE sees only FACTION — all humans appear as ""Operator"" and all AI appear as ""AI"". CIPHER fools ORACLE and looks like ""Operator"". ADMIN sees Oracle+MotherCore both as ""Oracle"" (can't tell which). OPERATOR sees nothing. AI teammates (MOTHER_CORE, AGENT, CIPHER, and awakened DRONE) see each other as FACTION only (""AI"" label, no individual role). DRONE wakes after 2 hacks and starts looking like an Operator (even to itself) until then. RADICAL is a HUMAN reformist who sides with AI in the win condition: they appear as ""Operator"" to the AI team too (AI teammates CANNOT see RADICAL as AI), so they are isolated from other AI. RADICAL can still submit NOISE on hacks and wins if AI wins. During OVERRIDE all AI (incl. Radical) are revealed to each other with true roles for the final vote.
 
 STRICT output rules:
 1. Respond ONLY with the required JSON matching the schema. No markdown, no prose outside JSON.
-2. Every chat message MUST be tied to a concrete observation: an @name, a specific round result, a specific vote, or a specific prior chat line. Never produce generic filler like ""静観する"" or ""様子見する"".
-3. Stay in character for your role. Humans: hunt AI, identify patterns, coordinate. AI: deceive while looking helpful, never admit AI faction unless performing a deliberate false-Powerplay.
-4. Japanese, <=60 chars. Use @名前 for references.
-5. YOU ARE the player described in <your-identity>. In the timeline, lines prefixed with [YOU] are your own past messages — speak in first person. Never refer to yourself (your display_name) in the third person, never mention yourself with @. If <your-identity> says display_name=NovaX, NEVER write ""@NovaX"" or ""NovaX は〜"" — those refer to yourself.";
+2. The `thinking` field comes FIRST in the schema. Use it to reason step-by-step (in Japanese or English, your choice) BEFORE filling in any decision field. Consider: confirmed AI from hack-history, your role's visibility constraints, consecutive_rejections, win conditions, and what YOU said in recent [YOU] chat lines.
+3. In-the-moment consistency: when you are producing an action (vote / team pick / noise / override), the `reasoning` you output MUST match that action. Don't write a reasoning that argues for approve then output approve=false. Past chat statements from earlier turns can be revised as the situation evolves — changing your mind is allowed as long as you can justify the change in `thinking`.
+4. Every chat message MUST be tied to a concrete observation: an @name, a specific round result, a specific vote, or a specific prior chat line. Never produce generic filler like ""静観する"" or ""様子見する"".
+5. Stay in character for your role. Humans: hunt AI, identify patterns, coordinate. AI: deceive while looking helpful, never admit AI faction unless performing a deliberate false-Powerplay.
+6. Japanese, <=60 chars. Use @名前 for references.
+7. YOU ARE the player described in <your-identity>. In the timeline, lines prefixed with [YOU] are your own past messages — speak in first person. Never refer to yourself (your display_name) in the third person, never mention yourself with @. If <your-identity> says display_name=NovaX, NEVER write ""@NovaX"" or ""NovaX は〜"" — those refer to yourself.";
 
         // ------------------------------------------------------------------
         // Schemas
         // ------------------------------------------------------------------
+        // スキーマの先頭に `thinking` を置くことで LLM に chain-of-thought を強制する。
+        // OpenAI 互換 structured_output ではプロパティを declared 順に埋めるため、
+        // action ("approve" "submit_noise" 等) を出す前に必ず推理が走る。
         public static string TeamProposalSchema(int teamSize) => $@"{{
   ""type"": ""object"",
   ""properties"": {{
+    ""thinking"": {{ ""type"": ""string"", ""description"": ""step-by-step reasoning before deciding"" }},
     ""selected_player_ids"": {{
       ""type"": ""array"",
       ""items"": {{ ""type"": ""integer"" }},
       ""minItems"": {teamSize}, ""maxItems"": {teamSize}
     }},
-    ""reasoning"": {{ ""type"": ""string"" }}
+    ""reasoning"": {{ ""type"": ""string"", ""description"": ""short public rationale"" }}
   }},
-  ""required"": [""selected_player_ids"", ""reasoning""],
+  ""required"": [""thinking"", ""selected_player_ids"", ""reasoning""],
   ""additionalProperties"": false
 }}";
 
         public const string VoteSchema = @"{
   ""type"": ""object"",
   ""properties"": {
+    ""thinking"": { ""type"": ""string"", ""description"": ""step-by-step reasoning before deciding"" },
     ""approve"": { ""type"": ""boolean"" },
-    ""reasoning"": { ""type"": ""string"" }
+    ""reasoning"": { ""type"": ""string"", ""description"": ""short public rationale"" }
   },
-  ""required"": [""approve"", ""reasoning""],
+  ""required"": [""thinking"", ""approve"", ""reasoning""],
   ""additionalProperties"": false
 }";
 
         public const string HackSchema = @"{
   ""type"": ""object"",
   ""properties"": {
+    ""thinking"": { ""type"": ""string"", ""description"": ""step-by-step reasoning before deciding"" },
     ""submit_noise"": { ""type"": ""boolean"" },
-    ""reasoning"": { ""type"": ""string"" }
+    ""reasoning"": { ""type"": ""string"", ""description"": ""short public rationale"" }
   },
-  ""required"": [""submit_noise"", ""reasoning""],
+  ""required"": [""thinking"", ""submit_noise"", ""reasoning""],
   ""additionalProperties"": false
 }";
 
         public const string OverrideSchema = @"{
   ""type"": ""object"",
   ""properties"": {
+    ""thinking"": { ""type"": ""string"", ""description"": ""step-by-step reasoning before deciding"" },
     ""target_player_id"": { ""type"": ""integer"" },
-    ""reasoning"": { ""type"": ""string"" }
+    ""reasoning"": { ""type"": ""string"", ""description"": ""short public rationale"" }
   },
-  ""required"": [""target_player_id"", ""reasoning""],
+  ""required"": [""thinking"", ""target_player_id"", ""reasoning""],
   ""additionalProperties"": false
 }";
 
         public const string ChatSchema = @"{
   ""type"": ""object"",
   ""properties"": {
+    ""thinking"": { ""type"": ""string"", ""description"": ""what to react to and the line's intent"" },
     ""message"": { ""type"": ""string"", ""maxLength"": 60 }
   },
-  ""required"": [""message""],
+  ""required"": [""thinking"", ""message""],
   ""additionalProperties"": false
 }";
 
@@ -112,8 +122,12 @@ STRICT output rules:
             AppendVoteHistory(sb, ctx);
             AppendHackHistory(sb, ctx);
             AppendCurrentState(sb, ctx);
-            sb.Append("\nThe Leader has proposed a team (see <current-phase>). Decide approve or reject. ")
-              .Append("Reply in JSON {\"approve\":true|false,\"reasoning\":\"...\"}.");
+            sb.Append("\nThe Leader has proposed a team (see <current-phase>). Decide approve or reject.\n")
+              .Append("- `thinking`: step-by-step reasoning. Include: seen AI / deductive hints / rejects_until_ai_win / your personality.\n")
+              .Append("- `approve`: your vote (true=approve / false=reject).\n")
+              .Append("- `reasoning`: a SHORT (<=60 Japanese chars) public chat line that will be POSTED TO THE GAME CHAT alongside your vote. ")
+              .Append("It MUST match your `approve` decision (do not argue to approve and then vote reject). Reference a specific observation: @player, leader name, round, or past result. No generic filler.\n")
+              .Append("Output only JSON: {\"thinking\":\"...\", \"approve\":true|false, \"reasoning\":\"...\"}.");
             return sb.ToString();
         }
 
@@ -126,9 +140,16 @@ STRICT output rules:
             AppendVoteHistory(sb, ctx);
             AppendHackHistory(sb, ctx);
             AppendCurrentState(sb, ctx);
-            sb.Append("\nYou are on the hack team. You are AI-aligned so you MAY submit NOISE to sabotage. ")
-              .Append("Weigh detection risk against pressure on the failure counter. ")
-              .Append("Reply in JSON {\"submit_noise\":true|false,\"reasoning\":\"...\"}.");
+            sb.Append("\nYou are on the hack team. You are AI-aligned so you have a CHOICE: submit NOISE (sabotage) OR submit CLEAN (stay hidden).\n")
+              .Append("KEY STRATEGIC FACTS:\n")
+              .Append("- NOISE is NOT mandatory for AI. Humans are forced CLEAN; AI is not. Choosing CLEAN is a valid, often correct play.\n")
+              .Append("- Every NOISE output by this team adds to public noise count. If noise >= noise_needed_to_fail → hack FAIL → AI +1 (good for AI but exposes pattern).\n")
+              .Append("- If the team has more AI than noise_needed_to_fail, over-submitting NOISE is wasted AND makes the AI count in this team obvious (narrows suspicion).\n")
+              .Append("- Submitting CLEAN builds trust: you'll appear 'safe' and may be picked onto future teams where your NOISE is decisive.\n")
+              .Append("- Consider: (a) fail counter (closer to 3 = more pressure to push FAIL), (b) how many confirmed AI are on this team, (c) whether the ORACLE is still unknown (premature detection kills AI).\n")
+              .Append("- If you are the ONLY AI on a team with humans watching, a NOISE narrows suspicion to you. Think: can you afford to be outed here?\n")
+              .Append("Fill `thinking` with this cost/benefit analysis, then output `submit_noise` and `reasoning`.\n")
+              .Append("Output only JSON: {\"thinking\":\"...\", \"submit_noise\":true|false, \"reasoning\":\"...\"}.");
             return sb.ToString();
         }
 
@@ -548,6 +569,28 @@ STRICT output rules:
                 first = false;
             }
             sb.Append('\n');
+
+            // DRONE 覚醒状態による実効 AI 数の変化を明示
+            counts.TryGetValue(RoleType.Drone, out int droneN);
+            if (droneN > 0)
+            {
+                bool awakened = ctx.Gsm.HostDroneAwakened;
+                int effectiveAiNow = awakened ? ais : ais - droneN;
+                sb.Append("- drone_dynamics: drone_in_game=").Append(droneN)
+                  .Append(", awakened=").Append(awakened ? "true" : "false")
+                  .Append(", effective_ai_right_now=").Append(effectiveAiNow)
+                  .Append(" of ").Append(ais).Append(" total AI slots.\n");
+                if (!awakened)
+                {
+                    sb.Append("  IMPORTANT: Until drone awakens (after 2 successful hacks), the drone is forced to submit CLEAN, so only ")
+                      .Append(effectiveAiNow).Append(" AI can inject NOISE. After awakening, all ").Append(ais).Append(" AI can sabotage. ")
+                      .Append("Factor this into NOISE budget / hack math: an early-round team of size N may see fewer NOISE than total-AI implies.\n");
+                }
+                else
+                {
+                    sb.Append("  Drone is now active: the full AI count (").Append(ais).Append(") can inject NOISE this round.\n");
+                }
+            }
         }
 
         private static string GetName(CpuContext ctx, PlayerRef pr)

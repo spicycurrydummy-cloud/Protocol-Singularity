@@ -44,6 +44,11 @@ namespace ProtocolSingularity.Networking
         private readonly HashSet<PlayerRef> _hackDoneFor = new();
         private readonly HashSet<PlayerRef> _overrideDoneFor = new();
         private readonly HashSet<PlayerRef> _chatDoneFor = new();
+        /// <summary>CPU ごとの最終 @mention 応答時刻 (Time.time)。連投抑止に使用。</summary>
+        private readonly Dictionary<PlayerRef, float> _mentionReplyCooldown = new();
+        private int _lastProcessedChatTotal = -1;
+        /// <summary>同じ @mention に対して同 CPU が複数回反応するのを防ぐクールダウン (秒)。</summary>
+        private const float MentionReplyCooldownSeconds = 12f;
 
         public override void Spawned()
         {
@@ -53,6 +58,7 @@ namespace ProtocolSingularity.Networking
             if (HasStateAuthority)
             {
                 GameStateManager.Changed += OnGsmChanged;
+                ChatManager.Changed += OnChatChanged;
                 OnGsmChanged();
             }
         }
@@ -61,6 +67,7 @@ namespace ProtocolSingularity.Networking
         {
             if (Instance == this) Instance = null;
             GameStateManager.Changed -= OnGsmChanged;
+            ChatManager.Changed -= OnChatChanged;
             try { _cts?.Cancel(); } catch { }
             _cts?.Dispose();
             _cts = null;
@@ -83,10 +90,84 @@ namespace ProtocolSingularity.Networking
             _hackDoneFor.Clear();
             _overrideDoneFor.Clear();
             _chatDoneFor.Clear();
+            _mentionReplyCooldown.Clear();
+            _lastProcessedChatTotal = -1;
             _lastPhase = (GamePhase)(-1);
             _lastRound = -1;
             _lastLeaderIdx = -1;
             _rng = new System.Random(Environment.TickCount ^ (Runner != null ? Runner.LocalPlayer.PlayerId : 0));
+        }
+
+        // ==========================================================
+        // Chat: @mention 応答
+        // ==========================================================
+        /// <summary>
+        /// 新着チャットに @CPU名 が含まれていたら、その CPU が即座に返信するよう
+        /// 短い遅延でタスクを投入する。phase 別の定期 ScheduleChat とは独立に動作する。
+        /// </summary>
+        private void OnChatChanged()
+        {
+            if (!HasStateAuthority) return;
+            var chat = ChatManager.Instance;
+            var reg = PlayerRegistry.Instance;
+            var gsm = GameStateManager.Instance;
+            if (chat == null || reg == null || gsm == null) return;
+            if (chat.TotalMessages == _lastProcessedChatTotal) return;
+            int prevTotal = _lastProcessedChatTotal;
+            _lastProcessedChatTotal = chat.TotalMessages;
+            if (prevTotal < 0) return; // 初回呼び出しは既存履歴を無視
+
+            // 直近の未処理メッセージだけ見る (EnumerateInOrder は max 件の最新を返す)
+            int newCount = System.Math.Min(chat.TotalMessages - prevTotal, ChatManager.Capacity);
+            if (newCount <= 0) return;
+            foreach (var (_, entry) in chat.EnumerateInOrder(newCount))
+            {
+                if (CpuPlayerRef.IsCpu(entry.Sender)) continue; // CPU 同士の無限ループ防止
+                var text = entry.RawText.ToString();
+                if (string.IsNullOrEmpty(text)) continue;
+                // @name 抽出して該当 CPU を探す
+                TriggerMentionedCpuReplies(text, reg, gsm);
+            }
+        }
+
+        private void TriggerMentionedCpuReplies(string text, PlayerRegistry reg, GameStateManager gsm)
+        {
+            // 複数の @name を含むメッセージに対応
+            int i = 0;
+            while (i < text.Length)
+            {
+                int at = text.IndexOf('@', i);
+                if (at < 0) break;
+                int end = at + 1;
+                while (end < text.Length && !char.IsWhiteSpace(text[end]) && text[end] != '@' && text[end] != ',' && text[end] != '、' && text[end] != '。') end++;
+                if (end - at <= 1) { i = at + 1; continue; }
+                string mentionedName = text.Substring(at + 1, end - at - 1);
+                TryScheduleMentionReply(mentionedName, reg, gsm);
+                i = end;
+            }
+        }
+
+        private void TryScheduleMentionReply(string mentionedName, PlayerRegistry reg, GameStateManager gsm)
+        {
+            for (int i = 0; i < reg.Count; i++)
+            {
+                var entry = reg.Entries[i];
+                if (!entry.IsCpu) continue;
+                var n = entry.DisplayName.ToString();
+                if (!string.Equals(n, mentionedName, StringComparison.Ordinal)) continue;
+
+                var cpu = entry.PlayerRef;
+                float now = Time.time;
+                if (_mentionReplyCooldown.TryGetValue(cpu, out var last) && (now - last) < MentionReplyCooldownSeconds)
+                    return; // 短時間の再指名は無視
+                _mentionReplyCooldown[cpu] = now;
+
+                if (!gsm.TryGetHostRole(cpu, out var role)) return;
+                // 2〜5秒で自然な返信タイミング
+                float delay = UnityEngine.Random.Range(2f, 5f);
+                StartCoroutine(RunAfterDelay(delay, () => RunChatAsync(cpu, role, gsm, reg)));
+                return;
+            }
         }
 
         private ICpuBrain GetBrain(PlayerRef cpu)
@@ -237,9 +318,18 @@ namespace ProtocolSingularity.Networking
             if (!gsm.TryGetHostRole(voter, out var role)) return;
 
             var ctx = BuildContext(voter, role, gsm, reg);
-            bool approve = await GetBrain(voter).ChooseVoteAsync(ctx, _cts.Token);
+            var choice = await GetBrain(voter).ChooseVoteAsync(ctx, _cts.Token);
             if (gsm.Phase != GamePhase.ApprovalVote) return;
-            gsm.Rpc_SubmitVote(voter, approve);
+            gsm.Rpc_SubmitVote(voter, choice.Approve);
+            // 投票と同時に LLM が生成した rationale をチャットにも流す (行動と発言を強制一致)
+            if (!string.IsNullOrWhiteSpace(choice.PublicRationale) && ChatManager.Instance != null)
+            {
+                var msg = choice.PublicRationale;
+                if (msg.Length > 60) msg = msg.Substring(0, 60);
+                ChatManager.Instance.Rpc_SendThought(voter, msg);
+                // 独立 ScheduleChat での重複発言を防ぐ
+                _chatDoneFor.Add(voter);
+            }
         }
 
         // ==========================================================
