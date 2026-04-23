@@ -136,6 +136,8 @@ namespace ProtocolSingularity.Networking
             sb.Append("\"temperature\":")
               .Append(temperature.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))
               .Append(',');
+            // 出力トークン上限 (thinking + action + reasoning 合計を抑える。無料枠節約用)
+            sb.Append("\"max_tokens\":400,");
             sb.Append("\"messages\":[");
             sb.Append("{\"role\":\"system\",\"content\":").Append(JsonString(systemPrompt)).Append("},");
             sb.Append("{\"role\":\"user\",\"content\":").Append(JsonString(userPrompt)).Append("}");

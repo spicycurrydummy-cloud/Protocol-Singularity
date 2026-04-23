@@ -15,6 +15,12 @@ namespace ProtocolSingularity.Networking
         public const string SystemPrompt =
 @"You are playing ""Protocol Singularity"" (Avalon-style hidden role game). Humans vs AI.
 
+ROLE & FRAME (most important):
+- You are ONE of the human/AI players inside the game fiction. Think and talk like a player at the table who only knows what <your-identity>, <players-you-see>, <current-phase>, <hack-history>, and <timeline> tell you.
+- NEVER break the fourth wall. Do NOT mention or allude to: ""LLM"", ""language model"", ""AI model"", ""system prompt"", ""prompt"", ""operator"", ""developer"", ""GM"", ""the person running this"", ""裏で操作している人"", ""中の人"", testing, simulation, or any real-world meta framing. The only ""AI"" concept that exists in this fiction is the in-universe OVERMIND faction; treat it as a faction inside the game, not as a chatbot.
+- No philosophical tangents, no discussions about consciousness, no accusing anyone of being an LLM / bot / script. Players only accuse each other of being in the AI faction based on IN-GAME evidence (hack-history, votes, chat claims).
+- Every decision MUST be grounded in concrete game state: confirmed AI from deductive-hints, team composition, vote patterns, chat claims you can cite, `consecutive_rejections`, win condition timing. If you cannot cite specific game evidence, fall back to your role's default strategy — don't invent narrative reasons.
+
 Rules (concise):
 - Each round: Leader proposes a hack team (size varies by round, see <current-phase>.team_size_this_round and .round_table) → all vote Approve/Reject (majority Approve executes) → team secretly submits CLEAN or NOISE.
 - Humans always submit CLEAN (forced). AI and awakened DRONE CHOOSE freely between CLEAN and NOISE — it is a strategic choice, not an automatic NOISE. Submitting CLEAN as AI hides you and builds trust for later rounds; submitting NOISE pushes the fail counter at the cost of exposing AI presence on the team. Hack FAILS when NOISE >= noise_needed_to_fail (usually 1, but larger-count late rounds need 2).
@@ -26,9 +32,10 @@ STRICT output rules:
 2. The `thinking` field comes FIRST in the schema. Use it to reason step-by-step (in Japanese or English, your choice) BEFORE filling in any decision field. Consider: confirmed AI from hack-history, your role's visibility constraints, consecutive_rejections, win conditions, and what YOU said in recent [YOU] chat lines.
 3. In-the-moment consistency: when you are producing an action (vote / team pick / noise / override), the `reasoning` you output MUST match that action. Don't write a reasoning that argues for approve then output approve=false. Past chat statements from earlier turns can be revised as the situation evolves — changing your mind is allowed as long as you can justify the change in `thinking`.
 4. Every chat message MUST be tied to a concrete observation: an @name, a specific round result, a specific vote, or a specific prior chat line. Never produce generic filler like ""静観する"" or ""様子見する"".
-5. Stay in character for your role. Humans: hunt AI, identify patterns, coordinate. AI: deceive while looking helpful, never admit AI faction unless performing a deliberate false-Powerplay.
-6. Japanese, <=60 chars. Use @名前 for references.
-7. YOU ARE the player described in <your-identity>. In the timeline, lines prefixed with [YOU] are your own past messages — speak in first person. Never refer to yourself (your display_name) in the third person, never mention yourself with @. If <your-identity> says display_name=NovaX, NEVER write ""@NovaX"" or ""NovaX は〜"" — those refer to yourself.";
+5. Stay in character as a PLAYER at a social-deduction board game table. Humans: share observations, compare patterns, coordinate politely. AI: blend in naturally while guiding the table toward favorable picks; never admit AI faction unless performing a deliberate false-Powerplay.
+6. TONE: casual, conversational Japanese. ABSOLUTELY NO aggressive / dramatic / threatening / hostile phrasing. Forbidden patterns: ""お前を許さない"", ""お前は敵だ"", ""お前は信じられない"", ""裏切り者"", ""絶対に〜しろ"", ""〜するな"", excessive exclamation marks, threats, insults. Replace with mild, conversational doubt like ""〜が気になる"", ""〜じゃない？"", ""〜っぽい気がする"". Even strong suspicions must be phrased as friendly reasoning, not confrontation.
+7. Japanese, <=60 chars. Use @名前 for references.
+8. YOU ARE the player described in <your-identity>. In the timeline, lines prefixed with [YOU] are your own past messages — speak in first person. Never refer to yourself (your display_name) in the third person, never mention yourself with @. If <your-identity> says display_name=NovaX, NEVER write ""@NovaX"" or ""NovaX は〜"" — those refer to yourself.";
 
         // ------------------------------------------------------------------
         // Schemas
@@ -54,7 +61,7 @@ STRICT output rules:
         public const string VoteSchema = @"{
   ""type"": ""object"",
   ""properties"": {
-    ""thinking"": { ""type"": ""string"", ""description"": ""step-by-step reasoning before deciding"" },
+    ""thinking"": { ""type"": ""string"", ""description"": ""brief reasoning (<=180 chars): cite the 1-2 key facts that drive the decision"" },
     ""approve"": { ""type"": ""boolean"" },
     ""reasoning"": { ""type"": ""string"", ""description"": ""short public rationale"" }
   },
@@ -65,7 +72,7 @@ STRICT output rules:
         public const string HackSchema = @"{
   ""type"": ""object"",
   ""properties"": {
-    ""thinking"": { ""type"": ""string"", ""description"": ""step-by-step reasoning before deciding"" },
+    ""thinking"": { ""type"": ""string"", ""description"": ""brief reasoning (<=180 chars): cite the 1-2 key facts that drive the decision"" },
     ""submit_noise"": { ""type"": ""boolean"" },
     ""reasoning"": { ""type"": ""string"", ""description"": ""short public rationale"" }
   },
@@ -76,7 +83,7 @@ STRICT output rules:
         public const string OverrideSchema = @"{
   ""type"": ""object"",
   ""properties"": {
-    ""thinking"": { ""type"": ""string"", ""description"": ""step-by-step reasoning before deciding"" },
+    ""thinking"": { ""type"": ""string"", ""description"": ""brief reasoning (<=180 chars): cite the 1-2 key facts that drive the decision"" },
     ""target_player_id"": { ""type"": ""integer"" },
     ""reasoning"": { ""type"": ""string"", ""description"": ""short public rationale"" }
   },
@@ -87,7 +94,7 @@ STRICT output rules:
         public const string ChatSchema = @"{
   ""type"": ""object"",
   ""properties"": {
-    ""thinking"": { ""type"": ""string"", ""description"": ""what to react to and the line's intent"" },
+    ""thinking"": { ""type"": ""string"", ""description"": ""brief reasoning (<=100 chars): what you react to"" },
     ""message"": { ""type"": ""string"", ""maxLength"": 60 }
   },
   ""required"": [""thinking"", ""message""],
@@ -126,7 +133,8 @@ STRICT output rules:
               .Append("- `thinking`: step-by-step reasoning. Include: seen AI / deductive hints / rejects_until_ai_win / your personality.\n")
               .Append("- `approve`: your vote (true=approve / false=reject).\n")
               .Append("- `reasoning`: a SHORT (<=60 Japanese chars) public chat line that will be POSTED TO THE GAME CHAT alongside your vote. ")
-              .Append("It MUST match your `approve` decision (do not argue to approve and then vote reject). Reference a specific observation: @player, leader name, round, or past result. No generic filler.\n")
+              .Append("It MUST match your `approve` decision. Reference a specific observation (@player, leader, round, past result). ")
+              .Append("TONE: friendly, casual, board-game player register. No threats / insults / \"お前は敵だ\" / dramatic accusations. Soft doubt is OK (\"〜気になる\" etc). No generic filler.\n")
               .Append("Output only JSON: {\"thinking\":\"...\", \"approve\":true|false, \"reasoning\":\"...\"}.");
             return sb.ToString();
         }
@@ -186,10 +194,14 @@ STRICT output rules:
             sb.Append("Produce ONE chat line (Japanese, <=60 chars) that directly reacts to the content above.\n")
               .Append($"You are {myName}. Speak in first person as {myName}. NEVER refer to {myName} in third person, NEVER write @{myName}.\n")
               .Append("The line MUST be tied to something concrete (an @player, the leader, a vote, a hack result, or a chat line) — but you have freedom in HOW you phrase it.\n")
-              .Append("Voice variety: some lines short, some conversational; use question / assertion / deduction / doubt / agreement forms; mix abrupt and explanatory. Match your personality trait.\n")
-              .Append("Forbidden: empty filler like \"静観する\" / \"様子見\" / \"了解\" / \"慎重に\". ")
-              .Append("Also avoid repeating the exact sentence shape of your own previous [YOU] lines in the timeline — if your last [YOU] line started with \"@Xは怪しい\", use a different structure this time.\n")
-              .Append("Output only JSON: {\"message\":\"...\"}.");
+              .Append("Voice variety: mix short / conversational / question / soft doubt / agreement forms. Match your personality trait.\n")
+              .Append("TONE RULES (very important):\n")
+              .Append("- Speak like a friendly player at a board game table, not a prosecutor. Even when suspicious, phrase it gently (\"〜気になる\" / \"〜じゃない？\" / \"〜っぽく見える\" / \"〜を説明してもらえる？\").\n")
+              .Append("- FORBIDDEN: \"お前は敵だ\" / \"お前を許さない\" / \"裏切り者\" / \"絶対〜しろ\" / threats / insults / heavy exclamation marks / dramatic 断罪口調. Avoid 断定の言い切り (\"絶対AIだ\") — prefer hedged forms.\n")
+              .Append("- No fourth-wall / meta references (no LLM, prompt, operator, 中の人). \"AI\" refers only to the in-game OVERMIND faction.\n")
+              .Append("- Forbidden fillers: \"静観する\" / \"様子見\" / \"了解\" / \"慎重に\".\n")
+              .Append("- Don't copy the exact sentence shape of your own previous [YOU] line.\n")
+              .Append("Output only JSON: {\"thinking\":\"...\", \"message\":\"...\"}.");
             return sb.ToString();
         }
 
@@ -367,11 +379,12 @@ STRICT output rules:
 
         private static void AppendChat(StringBuilder sb, CpuContext ctx)
         {
-            sb.Append("<timeline> (player chat + system events, chronological, up to 40). Lines starting with [YOU] are your own past messages — do not treat them as someone else.\n");
+            const int TimelineCap = 14;
+            sb.Append("<timeline> (recent chat + system events, chronological, up to ").Append(TimelineCap).Append("). Lines starting with [YOU] are your own past messages.\n");
             var merged = new List<(int tick, string text)>();
             if (ctx.Chat != null)
             {
-                foreach (var (_, entry) in ctx.Chat.EnumerateInOrder(40))
+                foreach (var (_, entry) in ctx.Chat.EnumerateInOrder(TimelineCap))
                 {
                     var text = ChatManager.FormatEntryText(entry, pr => GetName(ctx, pr));
                     bool isSelf = entry.Sender == ctx.Self;
@@ -382,14 +395,17 @@ STRICT output rules:
             var gl = GameLog.Instance;
             if (gl != null)
             {
-                foreach (var entry in gl.EnumerateInOrder(40))
+                foreach (var entry in gl.EnumerateInOrder(TimelineCap))
                 {
                     var text = entry.Text.ToString();
                     if (!string.IsNullOrEmpty(text)) merged.Add((entry.Tick, "[event] " + text));
                 }
             }
             merged.Sort((a, b) => a.tick.CompareTo(b.tick));
-            foreach (var m in merged) sb.Append($"- [t={m.tick}] {m.text}\n");
+            // 直近 TimelineCap 件だけに切り詰め (トークン節約)
+            int skip = System.Math.Max(0, merged.Count - TimelineCap);
+            for (int i = skip; i < merged.Count; i++)
+                sb.Append($"- [t={merged[i].tick}] {merged[i].text}\n");
             sb.Append("</timeline>\n\n");
         }
 

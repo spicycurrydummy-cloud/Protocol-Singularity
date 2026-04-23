@@ -25,13 +25,14 @@ namespace ProtocolSingularity.Networking
 
         private readonly Dictionary<PlayerRef, ICpuBrain> _brains = new();
         private readonly Dictionary<PlayerRef, string> _personalities = new();
+        // 過度に攻撃的・煽り系はカット。全員カジュアルなボードゲームプレイヤーの口調が基本。
         private static readonly string[] PersonalityPool =
         {
-            "慎重タイプ (疑い深く、根拠の薄い主張には反対寄り。発言は短く絞る)",
-            "楽観タイプ (前向きで提案を通したがる。フレンドリーな口調)",
-            "論理タイプ (数字と因果で語る。過去の投票やハック結果を引用する)",
-            "攻撃タイプ (疑わしいプレイヤーを名指しで追及する。威圧的)",
-            "寡黙タイプ (発言量は少なめ。要点を短く断言する)"
+            "慎重タイプ (根拠の薄い推理にはやんわり疑問を呈す。口調は丁寧・短め)",
+            "楽観タイプ (前向きでフレンドリー。提案を通しやすく雰囲気を和らげる)",
+            "論理タイプ (過去の投票・ハック結果の数字を引いて理由を説明する。落ち着いた口調)",
+            "雑談タイプ (軽いノリで場を和ませつつ時折気になる点を指摘する)",
+            "寡黙タイプ (発言量は少なめ。短く要点だけ。攻撃的にはならない)"
         };
         private System.Random _rng;
         private CancellationTokenSource _cts;
@@ -115,33 +116,47 @@ namespace ProtocolSingularity.Networking
             if (chat.TotalMessages == _lastProcessedChatTotal) return;
             int prevTotal = _lastProcessedChatTotal;
             _lastProcessedChatTotal = chat.TotalMessages;
-            if (prevTotal < 0) return; // 初回呼び出しは既存履歴を無視
+            if (prevTotal < 0)
+            {
+                Debug.Log($"[CpuOrch] OnChatChanged: init consume. total={chat.TotalMessages}");
+                return;
+            }
 
-            // 直近の未処理メッセージだけ見る (EnumerateInOrder は max 件の最新を返す)
             int newCount = System.Math.Min(chat.TotalMessages - prevTotal, ChatManager.Capacity);
             if (newCount <= 0) return;
+            Debug.Log($"[CpuOrch] OnChatChanged: new={newCount} total={chat.TotalMessages}");
             foreach (var (_, entry) in chat.EnumerateInOrder(newCount))
             {
-                if (CpuPlayerRef.IsCpu(entry.Sender)) continue; // CPU 同士の無限ループ防止
+                if (CpuPlayerRef.IsCpu(entry.Sender))
+                {
+                    Debug.Log($"[CpuOrch] skip CPU sender pid={entry.Sender.PlayerId}");
+                    continue;
+                }
                 var text = entry.RawText.ToString();
+                Debug.Log($"[CpuOrch] human chat pid={entry.Sender.PlayerId} text='{text}'");
                 if (string.IsNullOrEmpty(text)) continue;
-                // @name 抽出して該当 CPU を探す
                 TriggerMentionedCpuReplies(text, reg, gsm);
             }
         }
 
         private void TriggerMentionedCpuReplies(string text, PlayerRegistry reg, GameStateManager gsm)
         {
-            // 複数の @name を含むメッセージに対応
             int i = 0;
             while (i < text.Length)
             {
                 int at = text.IndexOf('@', i);
                 if (at < 0) break;
                 int end = at + 1;
-                while (end < text.Length && !char.IsWhiteSpace(text[end]) && text[end] != '@' && text[end] != ',' && text[end] != '、' && text[end] != '。') end++;
+                // 英数/アンダースコアだけを名前の一部として取る (記号・句読点で切る)
+                while (end < text.Length)
+                {
+                    char c = text[end];
+                    if (char.IsLetterOrDigit(c) || c == '_') end++;
+                    else break;
+                }
                 if (end - at <= 1) { i = at + 1; continue; }
                 string mentionedName = text.Substring(at + 1, end - at - 1);
+                Debug.Log($"[CpuOrch] detected @mention -> '{mentionedName}'");
                 TryScheduleMentionReply(mentionedName, reg, gsm);
                 i = end;
             }
@@ -154,20 +169,25 @@ namespace ProtocolSingularity.Networking
                 var entry = reg.Entries[i];
                 if (!entry.IsCpu) continue;
                 var n = entry.DisplayName.ToString();
-                if (!string.Equals(n, mentionedName, StringComparison.Ordinal)) continue;
+                // 大小無視で比較 (ユーザが @fool と打っても FOOL にマッチ)
+                if (!string.Equals(n, mentionedName, StringComparison.OrdinalIgnoreCase)) continue;
 
                 var cpu = entry.PlayerRef;
                 float now = Time.time;
                 if (_mentionReplyCooldown.TryGetValue(cpu, out var last) && (now - last) < MentionReplyCooldownSeconds)
-                    return; // 短時間の再指名は無視
+                {
+                    Debug.Log($"[CpuOrch] @{mentionedName} on cooldown ({now - last:F1}s < {MentionReplyCooldownSeconds}s)");
+                    return;
+                }
                 _mentionReplyCooldown[cpu] = now;
 
                 if (!gsm.TryGetHostRole(cpu, out var role)) return;
-                // 2〜5秒で自然な返信タイミング
                 float delay = UnityEngine.Random.Range(2f, 5f);
+                Debug.Log($"[CpuOrch] scheduling reply from @{n} (pid={cpu.PlayerId}) in {delay:F1}s");
                 StartCoroutine(RunAfterDelay(delay, () => RunChatAsync(cpu, role, gsm, reg)));
                 return;
             }
+            Debug.Log($"[CpuOrch] @{mentionedName} did not match any CPU in registry (count={reg.Count})");
         }
 
         private ICpuBrain GetBrain(PlayerRef cpu)
@@ -225,9 +245,12 @@ namespace ProtocolSingularity.Networking
 
                 switch (gsm.Phase)
                 {
+                    // API コスト削減のため、チャット生成は議論中心フェーズのみ。
+                    // ApprovalVote は投票レスポンス内の reasoning をそのままチャット化するので不要。
+                    // Hacking は短い action フェーズなので省く。
                     case GamePhase.TeamProposal: ScheduleTeamProposal(gsm, reg); ScheduleChat(gsm, reg); break;
-                    case GamePhase.ApprovalVote: ScheduleApprovalVote(gsm, reg); ScheduleChat(gsm, reg); break;
-                    case GamePhase.Hacking: ScheduleHacking(gsm, reg); ScheduleChat(gsm, reg); break;
+                    case GamePhase.ApprovalVote: ScheduleApprovalVote(gsm, reg); break;
+                    case GamePhase.Hacking: ScheduleHacking(gsm, reg); break;
                     case GamePhase.OverrideDiscussion: ScheduleChat(gsm, reg); break;
                     case GamePhase.OverrideVote: ScheduleOverrideVote(gsm, reg); break;
                 }

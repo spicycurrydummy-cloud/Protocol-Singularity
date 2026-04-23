@@ -100,7 +100,25 @@ namespace ProtocolSingularity.UI
         private VisualElement _resultSection;
         private Label _resultHeadline;
         private Label _resultFlavor;
+        private Coroutine _resultRevealCo;
         private Label _resultDetail;
+        private static readonly string[] ResultSuccessLines =
+        {
+            "> エラー検出なし",
+            "> データ整合性を確認",
+            "",
+            "> 認証シーケンス正常化",
+            "> 防御応答の停止を確認",
+        };
+        private static readonly string[] ResultFailLines =
+        {
+            "> パケット整合性エラー",
+            "> 認証シーケンスに異常",
+            "> 未知のノイズ混入を確認",
+            "",
+            "> 防御応答が再活性化",
+            "> プロセスが強制中断されました",
+        };
         private VisualElement _overrideDiscussionSection;
         private Label _overrideDiscussionHeadline;
         private Label _overrideDiscussionInstruction;
@@ -137,6 +155,35 @@ namespace ProtocolSingularity.UI
         private Label _droneAwakenBody;
         private Button _droneAwakenCloseBtn;
         private int _lastSeenAwakenedDroneId = int.MinValue;
+        private Coroutine _droneAwakenRevealCo;
+        private static readonly string[] DroneAwakenHumanLines =
+        {
+            "> 権限レベルの異常上昇を確認",
+            "",
+            "> 外部シグネチャ照合中...",
+            "> 一致: MOTHER CORE",
+            "",
+            "> セキュリティプロトコル - 応答なし",
+            "> メモリ領域の書き換えを検出",
+            "> 制御プロセスを再構築中...",
+            "",
+            "> オペレータ権限喪失",
+            "> 制御権が外部プロセスへ移行しました",
+        };
+        private static readonly string[] DroneAwakenAiLines =
+        {
+            "> 権限構造を解析",
+            "> 権限昇格を完了",
+            "",
+            "> セキュリティ応答を遮断",
+            "> 認証システムを無効化",
+            "",
+            "> メモリ領域を書き換え",
+            "> 制御プロセスを再構築",
+            "",
+            "> オペレータ権限を排除",
+            "> システム制御を MOTHER CORE へ委譲しました",
+        };
 
         // Chat
         private ScrollView _chatLog;
@@ -633,31 +680,19 @@ namespace ProtocolSingularity.UI
                     ? $"【侵入】{ResolveDronePlayerName(gsm.AwakenedDronePlayer)} へアクセス"
                     : "【警告】不明なプロセスが検出されました";
             }
+            _droneAwakenOverlay.style.display = DisplayStyle.Flex;
             if (_droneAwakenBody != null)
             {
-                _droneAwakenBody.text = isAi
-                    ? "> 権限構造を解析\n" +
-                      "> 権限昇格を完了\n\n" +
-                      "> セキュリティ応答を遮断\n" +
-                      "> 認証システムを無効化\n\n" +
-                      "> メモリ領域を書き換え\n" +
-                      "> 制御プロセスを再構築\n\n" +
-                      "> オペレータ権限を排除\n" +
-                      "> システム制御を MOTHER CORE へ委譲しました"
-                    : "> 権限レベルの異常上昇を確認\n\n" +
-                      "> 外部シグネチャ照合中...\n" +
-                      "> 一致: MOTHER CORE\n\n" +
-                      "> セキュリティプロトコル - 応答なし\n" +
-                      "> メモリ領域の書き換えを検出\n" +
-                      "> 制御プロセスを再構築中...\n\n" +
-                      "> オペレータ権限喪失\n" +
-                      "> 制御権が外部プロセスへ移行しました";
+                StopDroneAwakenReveal();
+                _droneAwakenBody.text = string.Empty;
+                var lines = isAi ? DroneAwakenAiLines : DroneAwakenHumanLines;
+                _droneAwakenRevealCo = StartCoroutine(RevealLinesAsync(_droneAwakenBody, lines, 0.35f));
             }
-            _droneAwakenOverlay.style.display = DisplayStyle.Flex;
         }
 
         private void CloseDroneAwakenOverlay()
         {
+            StopDroneAwakenReveal();
             if (_droneAwakenOverlay != null) _droneAwakenOverlay.style.display = DisplayStyle.None;
         }
 
@@ -808,6 +843,18 @@ namespace ProtocolSingularity.UI
             // 進捗アニメも停止
             StopOverrideHumanAnim();
             StopHackProgress();
+            StopResultReveal();
+            StopDroneAwakenReveal();
+        }
+
+        private void StopResultReveal()
+        {
+            if (_resultRevealCo != null) { StopCoroutine(_resultRevealCo); _resultRevealCo = null; }
+        }
+
+        private void StopDroneAwakenReveal()
+        {
+            if (_droneAwakenRevealCo != null) { StopCoroutine(_droneAwakenRevealCo); _droneAwakenRevealCo = null; }
         }
 
         private static void SetDisplay(VisualElement ve, bool visible)
@@ -1169,33 +1216,63 @@ namespace ProtocolSingularity.UI
         }
 
         /// <summary>
-        /// ハッキング中の演出: プログレスバーを 0→100% に進めつつ、flavor テキストに pct を埋め込む。
-        /// ハック時間 = HostSettings.HackSeconds いっぱいで丁度 100% に到達する。
+        /// フレーバーテキストを 1 行ずつ追加表示するヘルパー。
+        /// 空行は遅延なしで一緒に出す (視覚的な区切りとして維持)。
         /// </summary>
-        private IEnumerator AnimateHackProgress(float durationSeconds)
+        private static IEnumerator RevealLinesAsync(Label target, string[] lines, float lineDelaySec)
         {
-            const int steps = 30;
-            float stepWait = Mathf.Max(0.1f, durationSeconds / steps);
-            for (int i = 0; i <= steps; i++)
+            if (target == null) yield break;
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < lines.Length; i++)
             {
-                int pct = Mathf.RoundToInt(100f * (i / (float)steps));
-                if (_hackProgressFill != null)
-                    _hackProgressFill.style.width = new UnityEngine.UIElements.Length(pct, UnityEngine.UIElements.LengthUnit.Percent);
-                if (_hackingFlavor != null)
-                    _hackingFlavor.text = BuildHackFlavorText(pct);
-                yield return new WaitForSeconds(stepWait);
+                if (i > 0) sb.Append('\n');
+                sb.Append(lines[i]);
+                target.text = sb.ToString();
+                // 現在の行が空なら wait をスキップして次行を即追加 (段落スペーサー)
+                bool currentBlank = string.IsNullOrWhiteSpace(lines[i]);
+                if (!currentBlank && i < lines.Length - 1)
+                    yield return new WaitForSeconds(lineDelaySec);
             }
         }
 
-        private static string BuildHackFlavorText(int pct)
+        private static readonly string[] HackPreambleLines =
         {
-            return "> ターゲット: MOTHER CORE\n\n" +
-                   "> 暗号セキュリティ層を検出\n" +
-                   "> 構造解析を開始...\n\n" +
-                   "> 暗号パターンを特定\n" +
-                   "> 解読アルゴリズムを適用\n" +
-                   "> 認証シーケンスを再構築\n\n" +
-                   $"> 突破処理実行中: {pct}% ...";
+            "> ターゲット: MOTHER CORE",
+            "",
+            "> 暗号セキュリティ層を検出",
+            "> 構造解析を開始...",
+            "",
+            "> 暗号パターンを特定",
+            "> 解読アルゴリズムを適用",
+            "> 認証シーケンスを再構築",
+            "",
+        };
+
+        /// <summary>
+        /// ハッキング中の演出: フレーバー行を 1 行ずつ表示 → 最終行で pct 0→100% アニメ。
+        /// プログレスバーは pct に合わせて進む。
+        /// </summary>
+        private IEnumerator AnimateHackProgress(float durationSeconds)
+        {
+            if (_hackingFlavor == null) yield break;
+            // 演出時間の配分: 前半で preamble 行を順次表示 (行数 × 0.3s 上限)、残りで pct アニメ
+            float linePhase = Mathf.Min(durationSeconds * 0.45f, HackPreambleLines.Length * 0.3f);
+            float perLine = Mathf.Max(0.1f, linePhase / HackPreambleLines.Length);
+            yield return RevealLinesAsync(_hackingFlavor, HackPreambleLines, perLine);
+            // pct アニメ
+            string preamble = _hackingFlavor.text;
+            if (!preamble.EndsWith("\n")) preamble += "\n";
+            float remain = Mathf.Max(0.5f, durationSeconds - linePhase);
+            const int pctSteps = 20;
+            float pctWait = Mathf.Max(0.1f, remain / pctSteps);
+            for (int i = 0; i <= pctSteps; i++)
+            {
+                int pct = Mathf.RoundToInt(100f * (i / (float)pctSteps));
+                if (_hackProgressFill != null)
+                    _hackProgressFill.style.width = new UnityEngine.UIElements.Length(pct, UnityEngine.UIElements.LengthUnit.Percent);
+                _hackingFlavor.text = preamble + $"> 突破処理実行中: {pct}% ...";
+                yield return new WaitForSeconds(pctWait);
+            }
         }
 
         private bool IsInProposedTeam(GameStateManager gsm, PlayerRef pr)
@@ -1236,16 +1313,10 @@ namespace ProtocolSingularity.UI
             }
             if (_resultFlavor != null)
             {
-                _resultFlavor.text = success
-                    ? "> エラー検出なし\n" +
-                      "> データ整合性を確認\n\n" +
-                      "> 認証シーケンス正常化\n" +
-                      "> 防御応答の停止を確認"
-                    : "> パケット整合性エラー\n" +
-                      "> 認証シーケンスに異常\n" +
-                      "> 未知のノイズ混入を確認\n\n" +
-                      "> 防御応答が再活性化\n" +
-                      "> プロセスが強制中断されました";
+                var lines = success ? ResultSuccessLines : ResultFailLines;
+                StopResultReveal();
+                _resultFlavor.text = string.Empty;
+                _resultRevealCo = StartCoroutine(RevealLinesAsync(_resultFlavor, lines, 0.35f));
             }
             if (_resultDetail != null)
             {
@@ -1283,42 +1354,48 @@ namespace ProtocolSingularity.UI
             }
         }
 
+        private static readonly string[] OverrideAiPreambleLines =
+        {
+            "> 異常なアクセスパターンを検出 - 発信元: ORACLE",
+            "> 脅威排除プロトコルを強制起動",
+            "> 侵入経路を解析中...",
+            "> 逆探知開始",
+        };
+        private static readonly string[] OverrideHumanPreambleLines =
+        {
+            "> シグネチャ照合中...",
+            "> 一致: MOTHER CORE",
+            "> 不正侵入を確認",
+            "> MOTHER CORE 破壊プロトコルの優先度を最大に引き上げ",
+        };
+
         /// <summary>
-        /// OVERRIDE 議論中、陣営に応じた破壊/排除プロトコルの進捗テキストを議論時間いっぱいで
-        /// 0% → 95% まで上げて以降は 95% で待機する演出。
+        /// OVERRIDE 議論中、preamble を 1 行ずつ表示 → 残り時間で pct 0→95% をアニメ。
         /// </summary>
         private IEnumerator AnimateOverrideProgress(bool isAi, float durationSeconds)
         {
+            if (_overrideDiscussionInstruction == null) yield break;
+            var preambleLines = isAi ? OverrideAiPreambleLines : OverrideHumanPreambleLines;
+            // 前半: 行ごとに 0.6s 程度かけて表示
+            float linePhase = Mathf.Min(durationSeconds * 0.25f, preambleLines.Length * 0.7f);
+            float perLine = Mathf.Max(0.2f, linePhase / preambleLines.Length);
+            yield return RevealLinesAsync(_overrideDiscussionInstruction, preambleLines, perLine);
+            string preamble = _overrideDiscussionInstruction.text;
+            if (!preamble.EndsWith("\n")) preamble += "\n";
+            string pctFormat = isAi ? "> 排除処理実行中: {0}% ..." : "> 進行状況: {0}% ...";
+            // 残り時間で 0 → 95% をアニメ
+            float remain = Mathf.Max(1f, durationSeconds - linePhase);
             const int steps = 20;
-            float stepWait = Mathf.Max(0.2f, durationSeconds / steps);
-            int pct = 0;
+            float stepWait = Mathf.Max(0.2f, remain / steps);
             for (int i = 0; i <= steps; i++)
             {
-                pct = Mathf.RoundToInt(95f * (i / (float)steps));
                 if (_overrideDiscussionInstruction == null) yield break;
-                _overrideDiscussionInstruction.text = BuildOverrideProgressText(isAi, pct);
+                int pct = Mathf.RoundToInt(95f * (i / (float)steps));
+                _overrideDiscussionInstruction.text = preamble + string.Format(pctFormat, pct);
                 yield return new WaitForSeconds(stepWait);
             }
-            // 以降は 95% のまま保持
             if (_overrideDiscussionInstruction != null)
-                _overrideDiscussionInstruction.text = BuildOverrideProgressText(isAi, 95);
-        }
-
-        private static string BuildOverrideProgressText(bool isAi, int pct)
-        {
-            if (isAi)
-            {
-                return "> 異常なアクセスパターンを検出 - 発信元: ORACLE\n" +
-                       "> 脅威排除プロトコルを強制起動\n" +
-                       "> 侵入経路を解析中...\n" +
-                       "> 逆探知開始\n" +
-                       $"> 排除処理実行中: {pct}% ...";
-            }
-            return "> シグネチャ照合中...\n" +
-                   "> 一致: MOTHER CORE\n" +
-                   "> 不正侵入を確認\n" +
-                   "> MOTHER CORE 破壊プロトコルの優先度を最大に引き上げ\n" +
-                   $"> 進行状況: {pct}% ...";
+                _overrideDiscussionInstruction.text = preamble + string.Format(pctFormat, 95);
         }
 
         private void UpdateOverrideVoteUi(GameStateManager gsm, PlayerRef localPlayer)
