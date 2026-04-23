@@ -63,7 +63,8 @@ namespace ProtocolSingularity.Networking
 
         // グローバル直列化ゲート。free tier RPM/queue 制限対策で全プロバイダ横断で 1 リクエストずつ、
         // かつリクエスト間に最小間隔 (MinGapSeconds) を挟むことで同時接続スパイクを抑える。
-        private static readonly System.Threading.SemaphoreSlim _gate = new System.Threading.SemaphoreSlim(1, 1);
+        // WebGL で SemaphoreSlim が正しく signal 伝搬しない問題を避けるため Interlocked + Task.Yield で実装。
+        private static int _gateLocked; // 0=free, 1=locked
         private static DateTime _lastCallUtc = DateTime.MinValue;
         private const double MinGapSeconds = 2.2; // ~27 RPM (Cerebras free 30 RPM を安全に下回る)
 
@@ -116,17 +117,22 @@ namespace ProtocolSingularity.Networking
             var url = provider.endpoint.TrimEnd('/') + "/chat/completions";
             var body = BuildRequestBody(provider.model, systemPrompt, userPrompt, schemaName, jsonSchemaBody, temperature, useJsonSchema);
 
-            // グローバル直列化: 1 リクエストずつ順番に処理。前回完了から MinGapSeconds 経過するまで待機。
-            try { await _gate.WaitAsync(ct); }
-            catch (OperationCanceledException) { return new TryResult { success = false, retriable = false }; }
+            // グローバル直列化: Interlocked + Task.Yield で WebGL でも確実に動くゲート。
+            // SemaphoreSlim / Task.Delay は Unity WebGL の sync context で再開されない場合があり hang の原因になるため使わない。
+            while (System.Threading.Interlocked.CompareExchange(ref _gateLocked, 1, 0) != 0)
+            {
+                if (ct.IsCancellationRequested) return new TryResult { success = false, retriable = false };
+                await Task.Yield();
+            }
             try
             {
-                var gap = (DateTime.UtcNow - _lastCallUtc).TotalSeconds;
-                if (gap < MinGapSeconds)
+                // 前回完了から MinGapSeconds 経つまで Task.Yield で待つ (フレームごとに再チェック)
+                while (true)
                 {
-                    int delayMs = (int)((MinGapSeconds - gap) * 1000);
-                    try { await Task.Delay(delayMs, ct); }
-                    catch (OperationCanceledException) { return new TryResult { success = false, retriable = false }; }
+                    var gap = (DateTime.UtcNow - _lastCallUtc).TotalSeconds;
+                    if (gap >= MinGapSeconds) break;
+                    if (ct.IsCancellationRequested) return new TryResult { success = false, retriable = false };
+                    await Task.Yield();
                 }
                 using var req = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST);
                 var bytes = Encoding.UTF8.GetBytes(body);
@@ -169,7 +175,7 @@ namespace ProtocolSingularity.Networking
             finally
             {
                 _lastCallUtc = DateTime.UtcNow;
-                _gate.Release();
+                System.Threading.Interlocked.Exchange(ref _gateLocked, 0);
             }
         }
 
