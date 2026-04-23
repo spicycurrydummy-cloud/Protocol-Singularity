@@ -844,7 +844,9 @@ namespace ProtocolSingularity.UI
             StopOverrideHumanAnim();
             StopHackProgress();
             StopResultReveal();
-            StopDroneAwakenReveal();
+            // Drone 覚醒モーダルは phase section と独立 (OVERLAY 扱い)。
+            // HideAllPhaseSections は phase 遷移の度に呼ばれるため、ここで止めると
+            // 覚醒演出の途中 (まだ 1 行目) で破棄されてしまう → 明示 close 時のみ停止する。
         }
 
         private void StopResultReveal()
@@ -1216,22 +1218,47 @@ namespace ProtocolSingularity.UI
         }
 
         /// <summary>
-        /// フレーバーテキストを 1 行ずつ追加表示するヘルパー。
-        /// 空行は遅延なしで一緒に出す (視覚的な区切りとして維持)。
+        /// フレーバーテキストをタイプライター風に 1 文字ずつ表示するヘルパー。
+        /// 総所要時間は旧来の「非空行数 × lineDelaySec」に合わせ、総文字数で割って per-char 間隔を算出。
+        /// 空白文字は待たずに即追加し、読みのリズムを保つ。
         /// </summary>
         private static IEnumerator RevealLinesAsync(Label target, string[] lines, float lineDelaySec)
         {
-            if (target == null) yield break;
+            if (target == null || lines == null || lines.Length == 0) yield break;
+
+            int nonBlankLines = 0;
+            int totalChars = 0;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(lines[i])) nonBlankLines++;
+                totalChars += lines[i].Length;
+                if (i > 0) totalChars++; // 改行
+            }
+            if (totalChars <= 0 || nonBlankLines <= 0)
+            {
+                target.text = string.Join("\n", lines);
+                yield break;
+            }
+            float totalDuration = nonBlankLines * lineDelaySec;
+            // per-char 間隔は 12ms〜50ms に収めて滑らかさを確保 (行数・文字数に依らず自然なテンポ)
+            float perCharSec = Mathf.Clamp(totalDuration / totalChars, 0.012f, 0.05f);
+
             var sb = new System.Text.StringBuilder();
             for (int i = 0; i < lines.Length; i++)
             {
-                if (i > 0) sb.Append('\n');
-                sb.Append(lines[i]);
-                target.text = sb.ToString();
-                // 現在の行が空なら wait をスキップして次行を即追加 (段落スペーサー)
-                bool currentBlank = string.IsNullOrWhiteSpace(lines[i]);
-                if (!currentBlank && i < lines.Length - 1)
-                    yield return new WaitForSeconds(lineDelaySec);
+                if (i > 0)
+                {
+                    sb.Append('\n');
+                    target.text = sb.ToString();
+                }
+                string line = lines[i];
+                for (int c = 0; c < line.Length; c++)
+                {
+                    sb.Append(line[c]);
+                    target.text = sb.ToString();
+                    if (!char.IsWhiteSpace(line[c]))
+                        yield return new WaitForSeconds(perCharSec);
+                }
             }
         }
 

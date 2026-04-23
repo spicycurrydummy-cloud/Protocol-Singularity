@@ -61,23 +61,73 @@ namespace ProtocolSingularity.Networking
 
         private static int _preferredProviderIndex;
 
+        // グローバル直列化ゲート。free tier RPM/queue 制限対策で全プロバイダ横断で 1 リクエストずつ、
+        // かつリクエスト間に最小間隔 (MinGapSeconds) を挟むことで同時接続スパイクを抑える。
+        private static readonly System.Threading.SemaphoreSlim _gate = new System.Threading.SemaphoreSlim(1, 1);
+        private static DateTime _lastCallUtc = DateTime.MinValue;
+        private const double MinGapSeconds = 2.2; // ~27 RPM (Cerebras free 30 RPM を安全に下回る)
+
         private struct TryResult
         {
             public bool success;
             public bool retriable;
             public long code;
             public string content;
+            public string body; // エラー時のレスポンスボディ (json_object 再試行判定用)
         }
 
+        /// <summary>
+        /// プロバイダごと 1 回 API コール。json_schema 非対応エラー (400) を検出したら
+        /// 同プロバイダで自動的に json_object (緩い JSON モード) にフォールバック再試行する。
+        /// </summary>
         private static async Task<TryResult> TryOneAsync(
             Mercury2Provider provider,
             string systemPrompt, string userPrompt, string schemaName, string jsonSchemaBody,
             float temperature, CancellationToken ct)
         {
+            var r1 = await DoHttpAsync(provider, systemPrompt, userPrompt, schemaName, jsonSchemaBody, temperature, useJsonSchema: true, ct);
+            if (r1.success) return r1;
+
+            // 「json_schema 非対応」系 (400 / 422) は同じプロバイダで json_object にして再試行。
+            // Cerebras は maxLength 等の一部制約が非対応で 422 "wrong_api_format" / "Invalid fields for schema" を返す。
+            bool schemaUnsupported = !string.IsNullOrEmpty(r1.body)
+                && (r1.code == 400 || r1.code == 422)
+                && (r1.body.Contains("json_schema")
+                    || r1.body.Contains("response_format")
+                    || r1.body.Contains("wrong_api_format")
+                    || r1.body.Contains("Invalid fields for schema"));
+            if (schemaUnsupported)
+            {
+                Debug.LogWarning($"[Mercury2] '{provider.name}' json_schema unsupported ({r1.code}); retrying with json_object mode.");
+                // schema hint を systemPrompt 末尾に追記して JSON 形を誘導
+                var extendedSystem = systemPrompt + "\n\nIMPORTANT: Return ONLY a single JSON object matching this schema (no markdown, no extra text):\n" + jsonSchemaBody;
+                var r2 = await DoHttpAsync(provider, extendedSystem, userPrompt, schemaName, jsonSchemaBody, temperature, useJsonSchema: false, ct);
+                if (r2.success) return r2;
+                return r2;
+            }
+            return r1;
+        }
+
+        private static async Task<TryResult> DoHttpAsync(
+            Mercury2Provider provider,
+            string systemPrompt, string userPrompt, string schemaName, string jsonSchemaBody,
+            float temperature, bool useJsonSchema, CancellationToken ct)
+        {
             var url = provider.endpoint.TrimEnd('/') + "/chat/completions";
-            var body = BuildRequestBody(provider.model, systemPrompt, userPrompt, schemaName, jsonSchemaBody, temperature);
+            var body = BuildRequestBody(provider.model, systemPrompt, userPrompt, schemaName, jsonSchemaBody, temperature, useJsonSchema);
+
+            // グローバル直列化: 1 リクエストずつ順番に処理。前回完了から MinGapSeconds 経過するまで待機。
+            try { await _gate.WaitAsync(ct); }
+            catch (OperationCanceledException) { return new TryResult { success = false, retriable = false }; }
             try
             {
+                var gap = (DateTime.UtcNow - _lastCallUtc).TotalSeconds;
+                if (gap < MinGapSeconds)
+                {
+                    int delayMs = (int)((MinGapSeconds - gap) * 1000);
+                    try { await Task.Delay(delayMs, ct); }
+                    catch (OperationCanceledException) { return new TryResult { success = false, retriable = false }; }
+                }
                 using var req = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST);
                 var bytes = Encoding.UTF8.GetBytes(body);
                 req.uploadHandler = new UploadHandlerRaw(bytes) { contentType = "application/json" };
@@ -94,30 +144,32 @@ namespace ProtocolSingularity.Networking
                 }
 
                 long code = req.responseCode;
+                string respBody = req.downloadHandler?.text;
                 if (req.result != UnityWebRequest.Result.Success)
                 {
-                    // プロバイダごとに機能差があるので (例: Groq は一部モデルで json_schema 非対応の 400)、
-                    // 基本すべての HTTP 失敗を次プロバイダに流す。
-                    // 明確に認証エラーとわかる 401/403 だけは同じキーの問題なので打ち切り。
                     bool retriable = !(code == 401 || code == 403);
-                    Debug.LogWarning($"[Mercury2] '{provider.name}' HTTP {code} ({schemaName}): {req.error}\n body={req.downloadHandler?.text}");
-                    return new TryResult { success = false, retriable = retriable, code = code };
+                    Debug.LogWarning($"[Mercury2] '{provider.name}' HTTP {code} ({schemaName}, jsonSchema={useJsonSchema}): {req.error}\n body={respBody}");
+                    return new TryResult { success = false, retriable = retriable, code = code, body = respBody };
                 }
 
-                var raw = req.downloadHandler.text;
-                var content = ExtractContent(raw);
+                var content = ExtractContent(respBody);
                 if (string.IsNullOrEmpty(content))
                 {
-                    Debug.LogWarning($"[Mercury2] '{provider.name}' response had no extractable content ({schemaName}): {raw}");
-                    return new TryResult { success = false, retriable = true, code = code };
+                    Debug.LogWarning($"[Mercury2] '{provider.name}' response had no extractable content ({schemaName}): {respBody}");
+                    return new TryResult { success = false, retriable = true, code = code, body = respBody };
                 }
-                Debug.Log($"[Mercury2:{provider.name}] {schemaName} -> {content}");
+                Debug.Log($"[Mercury2:{provider.name}{(useJsonSchema?"":"/json_object")}] {schemaName} -> {content}");
                 return new TryResult { success = true, content = content, code = code };
             }
             catch (Exception e)
             {
                 Debug.LogError($"[Mercury2] '{provider.name}' exception: {e.Message}");
                 return new TryResult { success = false, retriable = true, code = -1 };
+            }
+            finally
+            {
+                _lastCallUtc = DateTime.UtcNow;
+                _gate.Release();
             }
         }
 
@@ -172,7 +224,7 @@ namespace ProtocolSingularity.Networking
         }
 
         private static string BuildRequestBody(string model, string systemPrompt, string userPrompt,
-            string schemaName, string jsonSchemaBody, float temperature)
+            string schemaName, string jsonSchemaBody, float temperature, bool useJsonSchema)
         {
             var sb = new StringBuilder(2048);
             sb.Append('{');
@@ -181,19 +233,28 @@ namespace ProtocolSingularity.Networking
               .Append(temperature.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))
               .Append(',');
             // 出力トークン上限。thinking (最大 ~300) + action + reasoning (~60) を収めるため 1024 を確保。
-            // 低すぎると JSON が途中で切れて message/approve が欠落する (復元不能)。
             sb.Append("\"max_tokens\":1024,");
             sb.Append("\"messages\":[");
             sb.Append("{\"role\":\"system\",\"content\":").Append(JsonString(systemPrompt)).Append("},");
             sb.Append("{\"role\":\"user\",\"content\":").Append(JsonString(userPrompt)).Append("}");
             sb.Append("],");
-            sb.Append("\"response_format\":{");
-            sb.Append("\"type\":\"json_schema\",");
-            sb.Append("\"json_schema\":{");
-            sb.Append("\"name\":").Append(JsonString(schemaName)).Append(',');
-            sb.Append("\"strict\":true,");
-            sb.Append("\"schema\":").Append(jsonSchemaBody);
-            sb.Append("}}}");
+            if (useJsonSchema)
+            {
+                // 厳密モード: schema 制約で構造保証 (対応プロバイダ/モデルのみ)
+                sb.Append("\"response_format\":{");
+                sb.Append("\"type\":\"json_schema\",");
+                sb.Append("\"json_schema\":{");
+                sb.Append("\"name\":").Append(JsonString(schemaName)).Append(',');
+                sb.Append("\"strict\":true,");
+                sb.Append("\"schema\":").Append(jsonSchemaBody);
+                sb.Append("}}");
+            }
+            else
+            {
+                // 緩和モード: "JSON を返せ" だけの指示。systemPrompt 側でスキーマを言葉で誘導する想定
+                sb.Append("\"response_format\":{\"type\":\"json_object\"}");
+            }
+            sb.Append('}');
             return sb.ToString();
         }
 

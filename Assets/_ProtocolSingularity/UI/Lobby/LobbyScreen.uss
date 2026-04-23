@@ -914,12 +914,16 @@
     color: rgb(200, 230, 200);
     white-space: normal;
     margin: 0 0 4px 0;
+    /* 9 preamble + 1 pct 行 ≈ 10 行分の高さを事前確保して 1 行ずつ表示時のガタつき防止 */
+    min-height: 200px;
 }
 
 .result-flavor {
     color: rgb(200, 230, 200);
     white-space: normal;
     margin: 6px 0;
+    /* 成功 5 行 / 失敗 6 行分の高さを事前確保 */
+    min-height: 130px;
 }
 
 /* DRONE awakening overlay — transient dramatic reveal */
@@ -950,4 +954,12 @@
     font-size: 15px;
     white-space: normal;
     margin-bottom: 16px;
+    /* 11 行 + 空行スペーサー分を事前確保 (行ごと reveal の途中も同じ高さを維持) */
+    min-height: 260px;
+}
+
+/* OVERRIDE 議論フレーバー: 4 preamble + 1 pct 行 ≈ 5 行分を事前確保 */
+#override-discussion-instruction {
+    white-space: normal;
+    min-height: 120px;
 }

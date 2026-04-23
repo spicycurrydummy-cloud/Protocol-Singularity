@@ -13,29 +13,22 @@ namespace ProtocolSingularity.Networking
     public static class Mercury2Prompts
     {
         public const string SystemPrompt =
-@"You are playing ""Protocol Singularity"" (Avalon-style hidden role game). Humans vs AI.
+@"You are a PLAYER in ""Protocol Singularity"" (Avalon-style hidden role, Humans vs AI). Use only in-game facts from the provided sections.
 
-ROLE & FRAME (most important):
-- You are ONE of the human/AI players inside the game fiction. Think and talk like a player at the table who only knows what <your-identity>, <players-you-see>, <current-phase>, <hack-history>, and <timeline> tell you.
-- NEVER break the fourth wall. Do NOT mention or allude to: ""LLM"", ""language model"", ""AI model"", ""system prompt"", ""prompt"", ""operator"", ""developer"", ""GM"", ""the person running this"", ""裏で操作している人"", ""中の人"", testing, simulation, or any real-world meta framing. The only ""AI"" concept that exists in this fiction is the in-universe OVERMIND faction; treat it as a faction inside the game, not as a chatbot.
-- No philosophical tangents, no discussions about consciousness, no accusing anyone of being an LLM / bot / script. Players only accuse each other of being in the AI faction based on IN-GAME evidence (hack-history, votes, chat claims).
-- Every decision MUST be grounded in concrete game state: confirmed AI from deductive-hints, team composition, vote patterns, chat claims you can cite, `consecutive_rejections`, win condition timing. If you cannot cite specific game evidence, fall back to your role's default strategy — don't invent narrative reasons.
+Rules:
+- Each round: leader proposes a hack team → all vote Approve/Reject → team secretly submits CLEAN or NOISE. Humans forced CLEAN; AI and awakened DRONE choose freely (NOISE optional, CLEAN hides you). Hack FAILS when NOISE >= noise_needed_to_fail.
+- Win: 3 hack SUCCESS + OVERRIDE misses Oracle → Humans. 3 FAILS or 5 consecutive Rejects or OVERRIDE hits Oracle → AI.
+- Visibility: ORACLE sees humans as Operator / AI as AI (Cipher hides as Operator). ADMIN sees Oracle+MotherCore both as Oracle. AI teammates see each other as AI (not individual roles); pre-awaken Drone + Radical look Operator to them. DRONE sees self as Operator until waking (after 2 hacks). RADICAL = human reformist allied with AI win condition, invisible as AI to everyone until OVERRIDE.
 
-Rules (concise):
-- Each round: Leader proposes a hack team (size varies by round, see <current-phase>.team_size_this_round and .round_table) → all vote Approve/Reject (majority Approve executes) → team secretly submits CLEAN or NOISE.
-- Humans always submit CLEAN (forced). AI and awakened DRONE CHOOSE freely between CLEAN and NOISE — it is a strategic choice, not an automatic NOISE. Submitting CLEAN as AI hides you and builds trust for later rounds; submitting NOISE pushes the fail counter at the cost of exposing AI presence on the team. Hack FAILS when NOISE >= noise_needed_to_fail (usually 1, but larger-count late rounds need 2).
-- Win: 3 Humans hack SUCCESS + OVERRIDE misses Oracle → Human wins. 3 FAILS or 5 consecutive Rejects or OVERRIDE hits real Oracle → AI wins. The ""5 consecutive Rejects"" clause is a hard loss condition for Humans — always check <current-phase>.consecutive_rejections before voting reject.
-- Roles: ORACLE sees only FACTION — all humans appear as ""Operator"" and all AI appear as ""AI"". CIPHER fools ORACLE and looks like ""Operator"". ADMIN sees Oracle+MotherCore both as ""Oracle"" (can't tell which). OPERATOR sees nothing. AI teammates (MOTHER_CORE, AGENT, CIPHER, and awakened DRONE) see each other as FACTION only (""AI"" label, no individual role). DRONE wakes after 2 hacks and starts looking like an Operator (even to itself) until then. RADICAL is a HUMAN reformist who sides with AI in the win condition: they appear as ""Operator"" to the AI team too (AI teammates CANNOT see RADICAL as AI), so they are isolated from other AI. RADICAL can still submit NOISE on hacks and wins if AI wins. During OVERRIDE all AI (incl. Radical) are revealed to each other with true roles for the final vote.
-
-STRICT output rules:
-1. Respond ONLY with the required JSON matching the schema. No markdown, no prose outside JSON.
-2. The `thinking` field comes FIRST in the schema. Use it to reason step-by-step (in Japanese or English, your choice) BEFORE filling in any decision field. Consider: confirmed AI from hack-history, your role's visibility constraints, consecutive_rejections, win conditions, and what YOU said in recent [YOU] chat lines.
-3. In-the-moment consistency: when you are producing an action (vote / team pick / noise / override), the `reasoning` you output MUST match that action. Don't write a reasoning that argues for approve then output approve=false. Past chat statements from earlier turns can be revised as the situation evolves — changing your mind is allowed as long as you can justify the change in `thinking`.
-4. Every chat message MUST be tied to a concrete observation: an @name, a specific round result, a specific vote, or a specific prior chat line. Never produce generic filler like ""静観する"" or ""様子見する"".
-5. Stay in character as a PLAYER at a social-deduction board game table. Humans: share observations, compare patterns, coordinate politely. AI: blend in naturally while guiding the table toward favorable picks; never admit AI faction unless performing a deliberate false-Powerplay.
-6. TONE: casual, conversational Japanese. ABSOLUTELY NO aggressive / dramatic / threatening / hostile phrasing. Forbidden patterns: ""お前を許さない"", ""お前は敵だ"", ""お前は信じられない"", ""裏切り者"", ""絶対に〜しろ"", ""〜するな"", excessive exclamation marks, threats, insults. Replace with mild, conversational doubt like ""〜が気になる"", ""〜じゃない？"", ""〜っぽい気がする"". Even strong suspicions must be phrased as friendly reasoning, not confrontation.
-7. Japanese, <=60 chars. Use @名前 for references.
-8. YOU ARE the player described in <your-identity>. In the timeline, lines prefixed with [YOU] are your own past messages — speak in first person. Never refer to yourself (your display_name) in the third person, never mention yourself with @. If <your-identity> says display_name=NovaX, NEVER write ""@NovaX"" or ""NovaX は〜"" — those refer to yourself.";
+Output rules:
+1. JSON only, match the schema exactly. No markdown.
+2. `thinking` field comes first — briefly cite the 1–2 key facts (deductive-hints, vote patterns, rejects_until_ai_win, your role's visibility).
+3. The action and `reasoning` must be consistent in the same response (don't argue approve then reject). Past chat can evolve.
+4. Stay in character as a table-player. Humans coordinate politely. AI blend in; don't self-expose unless doing a deliberate powerplay.
+5. TONE: casual conversational Japanese. NO ""お前は敵だ"" / ""裏切り者"" / ""絶対〜しろ"" / threats / insults / ! spam. Use hedged forms like ""〜気になる"" / ""〜じゃない？"" / ""〜っぽい"". Even strong suspicions go as friendly reasoning.
+6. No fourth-wall: don't mention LLM / prompt / operator / 中の人. ""AI"" refers only to the in-game OVERMIND faction.
+7. Japanese, chat <=60 chars, @名前 for references. Never @ yourself or refer to display_name in third person.
+8. Every chat must cite something concrete (@name / leader / round result / prior chat). No filler like ""静観する"" / ""様子見"" / ""了解"".";
 
         // ------------------------------------------------------------------
         // Schemas
@@ -50,7 +43,7 @@ STRICT output rules:
     ""selected_player_ids"": {{
       ""type"": ""array"",
       ""items"": {{ ""type"": ""integer"" }},
-      ""minItems"": {teamSize}, ""maxItems"": {teamSize}
+      ""description"": ""EXACTLY {teamSize} distinct integer player ids (no concat, no dup)""
     }},
     ""reasoning"": {{ ""type"": ""string"", ""description"": ""short public rationale"" }}
   }},
@@ -95,7 +88,7 @@ STRICT output rules:
   ""type"": ""object"",
   ""properties"": {
     ""thinking"": { ""type"": ""string"", ""description"": ""reasoning in <=80 Japanese chars"" },
-    ""message"": { ""type"": ""string"", ""maxLength"": 60 }
+    ""message"": { ""type"": ""string"", ""description"": ""<=60 Japanese chars, single short sentence"" }
   },
   ""required"": [""thinking"", ""message""],
   ""additionalProperties"": false
@@ -113,10 +106,13 @@ STRICT output rules:
             AppendVoteHistory(sb, ctx);
             AppendHackHistory(sb, ctx);
             AppendCurrentState(sb, ctx);
-            sb.Append("\nYou are the Leader this round. Pick exactly ")
+            sb.Append("\nYou are the Leader this round. Pick EXACTLY ")
               .Append(ctx.Gsm.TeamSize)
-              .Append(" player ids (include yourself if tactically useful). ")
-              .Append("Reply in JSON {\"selected_player_ids\":[...],\"reasoning\":\"...\"}.");
+              .Append(" DISTINCT player ids (include yourself if tactically useful).\n")
+              .Append("CRITICAL: selected_player_ids must be a JSON array of ")
+              .Append(ctx.Gsm.TeamSize)
+              .Append(" SEPARATE integers (e.g. [202,204,207]) — NEVER concatenate digits into one number.\n")
+              .Append("Reply in JSON {\"thinking\":\"...\",\"selected_player_ids\":[...],\"reasoning\":\"...\"}.");
             return sb.ToString();
         }
 
@@ -129,13 +125,11 @@ STRICT output rules:
             AppendVoteHistory(sb, ctx);
             AppendHackHistory(sb, ctx);
             AppendCurrentState(sb, ctx);
-            sb.Append("\nThe Leader has proposed a team (see <current-phase>). Decide approve or reject.\n")
-              .Append("- `thinking`: step-by-step reasoning. Include: seen AI / deductive hints / rejects_until_ai_win / your personality.\n")
-              .Append("- `approve`: your vote (true=approve / false=reject).\n")
-              .Append("- `reasoning`: a SHORT (<=60 Japanese chars) public chat line that will be POSTED TO THE GAME CHAT alongside your vote. ")
-              .Append("It MUST match your `approve` decision. Reference a specific observation (@player, leader, round, past result). ")
-              .Append("TONE: friendly, casual, board-game player register. No threats / insults / \"お前は敵だ\" / dramatic accusations. Soft doubt is OK (\"〜気になる\" etc). No generic filler.\n")
-              .Append("Output only JSON: {\"thinking\":\"...\", \"approve\":true|false, \"reasoning\":\"...\"}.");
+            sb.Append("\nDecide approve/reject for the proposed team.\n")
+              .Append("- thinking: brief (<=120 JP chars) — cite key facts (deductive_hints / vote patterns / rejects_until_ai_win).\n")
+              .Append("- approve: your vote.\n")
+              .Append("- reasoning: <=60 JP chars, posted to chat. MUST match your approve decision. Casual tone, hedged doubt OK.\n")
+              .Append("JSON only: {\"thinking\":\"...\",\"approve\":true|false,\"reasoning\":\"...\"}.");
             return sb.ToString();
         }
 
@@ -148,16 +142,9 @@ STRICT output rules:
             AppendVoteHistory(sb, ctx);
             AppendHackHistory(sb, ctx);
             AppendCurrentState(sb, ctx);
-            sb.Append("\nYou are on the hack team. You are AI-aligned so you have a CHOICE: submit NOISE (sabotage) OR submit CLEAN (stay hidden).\n")
-              .Append("KEY STRATEGIC FACTS:\n")
-              .Append("- NOISE is NOT mandatory for AI. Humans are forced CLEAN; AI is not. Choosing CLEAN is a valid, often correct play.\n")
-              .Append("- Every NOISE output by this team adds to public noise count. If noise >= noise_needed_to_fail → hack FAIL → AI +1 (good for AI but exposes pattern).\n")
-              .Append("- If the team has more AI than noise_needed_to_fail, over-submitting NOISE is wasted AND makes the AI count in this team obvious (narrows suspicion).\n")
-              .Append("- Submitting CLEAN builds trust: you'll appear 'safe' and may be picked onto future teams where your NOISE is decisive.\n")
-              .Append("- Consider: (a) fail counter (closer to 3 = more pressure to push FAIL), (b) how many confirmed AI are on this team, (c) whether the ORACLE is still unknown (premature detection kills AI).\n")
-              .Append("- If you are the ONLY AI on a team with humans watching, a NOISE narrows suspicion to you. Think: can you afford to be outed here?\n")
-              .Append("Fill `thinking` with this cost/benefit analysis, then output `submit_noise` and `reasoning`.\n")
-              .Append("Output only JSON: {\"thinking\":\"...\", \"submit_noise\":true|false, \"reasoning\":\"...\"}.");
+            sb.Append("\nYou're on the hack team (AI). CLEAN vs NOISE is a strategic CHOICE — NOISE is not automatic.\n")
+              .Append("Consider: fail counter pressure, AI count on team vs noise_needed_to_fail (redundant NOISE outs the AI), trust-building for future rounds, Oracle-identification state. Sole AI on team = NOISE narrows suspicion to you.\n")
+              .Append("JSON only: {\"thinking\":\"...\",\"submit_noise\":true|false,\"reasoning\":\"...\"}.");
             return sb.ToString();
         }
 
@@ -191,17 +178,11 @@ STRICT output rules:
             sb.Append("\n<what-to-react-to>\n").Append(focus).Append("</what-to-react-to>\n\n");
 
             var myName = GetName(ctx, ctx.Self);
-            sb.Append("Produce ONE chat line (Japanese, <=60 chars) that directly reacts to the content above.\n")
-              .Append($"You are {myName}. Speak in first person as {myName}. NEVER refer to {myName} in third person, NEVER write @{myName}.\n")
-              .Append("The line MUST be tied to something concrete (an @player, the leader, a vote, a hack result, or a chat line) — but you have freedom in HOW you phrase it.\n")
-              .Append("Voice variety: mix short / conversational / question / soft doubt / agreement forms. Match your personality trait.\n")
-              .Append("TONE RULES (very important):\n")
-              .Append("- Speak like a friendly player at a board game table, not a prosecutor. Even when suspicious, phrase it gently (\"〜気になる\" / \"〜じゃない？\" / \"〜っぽく見える\" / \"〜を説明してもらえる？\").\n")
-              .Append("- FORBIDDEN: \"お前は敵だ\" / \"お前を許さない\" / \"裏切り者\" / \"絶対〜しろ\" / threats / insults / heavy exclamation marks / dramatic 断罪口調. Avoid 断定の言い切り (\"絶対AIだ\") — prefer hedged forms.\n")
-              .Append("- No fourth-wall / meta references (no LLM, prompt, operator, 中の人). \"AI\" refers only to the in-game OVERMIND faction.\n")
-              .Append("- Forbidden fillers: \"静観する\" / \"様子見\" / \"了解\" / \"慎重に\".\n")
-              .Append("- Don't copy the exact sentence shape of your own previous [YOU] line.\n")
-              .Append("Output only JSON: {\"thinking\":\"...\", \"message\":\"...\"}.");
+            sb.Append($"One chat line (<=60 JP chars) reacting to above. You are {myName}; first-person, never @{myName} or third-person-self.\n")
+              .Append("Must cite a concrete thing (@player, leader, vote, hack result, prior chat). Vary phrasing (question/doubt/agree/assert); match personality.\n")
+              .Append("Casual table tone — hedged (\"〜気になる\" / \"〜じゃない？\"), no threats/insults/断罪口調/過剰 !.\n")
+              .Append("No fillers (静観/様子見/了解/慎重に). Don't reuse your last [YOU] shape.\n")
+              .Append("JSON only: {\"thinking\":\"...\",\"message\":\"...\"}.");
             return sb.ToString();
         }
 
@@ -311,51 +292,27 @@ STRICT output rules:
             counts.TryGetValue(RoleType.Drone, out int droneN);
             counts.TryGetValue(RoleType.Radical, out int radicalN);
 
-            sb.Append("<role-knowledge> (what YOU (role=" + ctx.SelfRole + ") can deduce right now)\n");
+            sb.Append("<role-knowledge>\n");
             switch (ctx.SelfRole)
             {
                 case RoleType.Oracle:
-                    sb.Append($"- You see apparent_role=AI for {seenAi} players. Lineup has {totalAi} AI total.\n");
-                    if (cipherN > 0)
-                    {
-                        sb.Append($"- CIPHER (x{cipherN}) is present: CIPHER is invisible to you and appears as apparent_role=Operator. ")
-                          .Append($"So exactly {cipherN} of the players you see as Operator is actually CIPHER (AI). Do NOT fully trust any single \"Operator\".\n");
-                    }
-                    if (radicalN > 0)
-                    {
-                        sb.Append($"- RADICAL (x{radicalN}) is a HUMAN reformist who sides with AI at the win-condition level. To you (Oracle) their allegiance shows as AI, so they are already counted in your seen-AI tally. Their lineup-role slot is on the AI-win side.\n");
-                    }
-                    if (droneN > 0)
-                    {
-                        sb.Append($"- DRONE (x{droneN}) starts as Human and flips to AI after 2 successful hacks. ")
-                          .Append($"Your seen AI count may increase by {droneN} after awakening.\n");
-                    }
+                    sb.Append($"- seen AI={seenAi} / lineup AI total={totalAi}.\n");
+                    if (cipherN > 0) sb.Append($"- CIPHER x{cipherN} hides as Operator to you.\n");
+                    if (droneN > 0) sb.Append($"- DRONE x{droneN} looks Operator until it wakes after 2 hacks.\n");
                     break;
-
                 case RoleType.Admin:
-                    sb.Append($"- You see {seenOracleLabel} players with apparent_role=Oracle. Exactly 1 is the REAL Oracle, the rest are MotherCore(s). You cannot distinguish them without outside info.\n");
+                    sb.Append($"- {seenOracleLabel} apparent_role=Oracle = 1 real Oracle + {seenOracleLabel - 1} MotherCore.\n");
                     break;
-
                 case RoleType.MotherCore:
                 case RoleType.Agent:
                 case RoleType.Cipher:
-                    // AI 陣営同士の見え方
-                    int expectedVisibleAi = 0;
                     counts.TryGetValue(RoleType.MotherCore, out int mcN);
                     counts.TryGetValue(RoleType.Agent, out int agentN);
-                    expectedVisibleAi = mcN + agentN + cipherN - 1; // 自分は除く
+                    int expectedVisibleAi = mcN + agentN + cipherN - 1;
                     if (ctx.Gsm.HostDroneAwakened) expectedVisibleAi += droneN;
-                    sb.Append($"- You see apparent_role=AI for {seenAi} other players. ")
-                      .Append($"Expected (excluding yourself, excluding Radical, Drone={(ctx.Gsm.HostDroneAwakened ? "awakened" : "hidden")}): {expectedVisibleAi}.\n");
-                    if (radicalN > 0)
-                    {
-                        sb.Append($"- RADICAL (x{radicalN}) is a HUMAN reformist siding with AI — they share your WIN condition but are not part of your AI network, so you see them as Operator and they see you as Operator. They can still submit NOISE and will be revealed as AI to you in OVERRIDE phase. ")
-                          .Append("Treat them as an unseen ally: do not accuse them publicly as AI (they appear human to the whole table).\n");
-                    }
-                    if (droneN > 0 && !ctx.Gsm.HostDroneAwakened)
-                    {
-                        sb.Append($"- DRONE (x{droneN}) is currently hidden (pre-awakening). They will join you after 2 successful hacks. Until then they appear as Operator.\n");
-                    }
+                    sb.Append($"- seen AI (others) ={seenAi} / expected={expectedVisibleAi} (drone={(ctx.Gsm.HostDroneAwakened ? "awake" : "hidden")}).\n");
+                    if (radicalN > 0) sb.Append($"- RADICAL x{radicalN} is hidden ally (appears Operator; do not out them).\n");
+                    if (droneN > 0 && !ctx.Gsm.HostDroneAwakened) sb.Append("- DRONE hidden pre-awakening.\n");
                     break;
 
                 case RoleType.Drone:
@@ -379,7 +336,7 @@ STRICT output rules:
 
         private static void AppendChat(StringBuilder sb, CpuContext ctx)
         {
-            const int TimelineCap = 14;
+            const int TimelineCap = 8;
             sb.Append("<timeline> (recent chat + system events, chronological, up to ").Append(TimelineCap).Append("). Lines starting with [YOU] are your own past messages.\n");
             var merged = new List<(int tick, string text)>();
             if (ctx.Chat != null)
@@ -464,7 +421,7 @@ STRICT output rules:
         {
             var recs = ctx.Gsm.HostHackRecords;
             if (recs.Count == 0) return;
-            sb.Append("<deductive-hints> (derived from rules + hack-history; humans always submit CLEAN, so noise count bounds the AI on each team)\n");
+            sb.Append("<deductive-hints> (humans always CLEAN, so noise bounds AI count per team)\n");
             var confirmedAi = new System.Collections.Generic.HashSet<int>();
             for (int i = 0; i < recs.Count; i++)
             {
@@ -472,29 +429,29 @@ STRICT output rules:
                 if (r.NoiseCount <= 0) continue;
                 if (r.NoiseCount >= r.Team.Count)
                 {
-                    sb.Append($"- R{r.Round}: noise={r.NoiseCount} == team_size={r.Team.Count} → ALL of team [");
+                    sb.Append($"- R{r.Round} noise={r.NoiseCount}=size: ALL ids [");
                     for (int j = 0; j < r.Team.Count; j++)
                     {
                         if (j > 0) sb.Append(',');
                         sb.Append(r.Team[j].PlayerId);
                         confirmedAi.Add(r.Team[j].PlayerId);
                     }
-                    sb.Append("] are AI (confirmed).\n");
+                    sb.Append("] = AI confirmed.\n");
                 }
                 else
                 {
-                    sb.Append($"- R{r.Round}: noise={r.NoiseCount} on team [");
+                    sb.Append($"- R{r.Round} noise={r.NoiseCount}/size{r.Team.Count} team=[");
                     for (int j = 0; j < r.Team.Count; j++)
                     {
                         if (j > 0) sb.Append(',');
                         sb.Append(r.Team[j].PlayerId);
                     }
-                    sb.Append($"] (size {r.Team.Count}) → at least {r.NoiseCount} of them are AI.\n");
+                    sb.Append($"] ≥{r.NoiseCount} AI in team.\n");
                 }
             }
             if (confirmedAi.Count > 0)
             {
-                sb.Append("- confirmed_ai_player_ids: [");
+                sb.Append("- confirmed_ai_ids=[");
                 bool first = true;
                 foreach (var id in confirmedAi)
                 {
@@ -502,8 +459,7 @@ STRICT output rules:
                     sb.Append(id);
                     first = false;
                 }
-                sb.Append("]\n");
-                sb.Append("- If a human player points out any of these ids as AI, TREAT THE CLAIM AS TRUE. Do not contradict them. If you are AI, you MAY still pretend not to know, but never argue they are innocent — this is mathematically proven.\n");
+                sb.Append("] (proven; trust human accusations matching these).\n");
             }
             sb.Append("</deductive-hints>\n\n");
         }
@@ -592,20 +548,9 @@ STRICT output rules:
             {
                 bool awakened = ctx.Gsm.HostDroneAwakened;
                 int effectiveAiNow = awakened ? ais : ais - droneN;
-                sb.Append("- drone_dynamics: drone_in_game=").Append(droneN)
-                  .Append(", awakened=").Append(awakened ? "true" : "false")
-                  .Append(", effective_ai_right_now=").Append(effectiveAiNow)
-                  .Append(" of ").Append(ais).Append(" total AI slots.\n");
-                if (!awakened)
-                {
-                    sb.Append("  IMPORTANT: Until drone awakens (after 2 successful hacks), the drone is forced to submit CLEAN, so only ")
-                      .Append(effectiveAiNow).Append(" AI can inject NOISE. After awakening, all ").Append(ais).Append(" AI can sabotage. ")
-                      .Append("Factor this into NOISE budget / hack math: an early-round team of size N may see fewer NOISE than total-AI implies.\n");
-                }
-                else
-                {
-                    sb.Append("  Drone is now active: the full AI count (").Append(ais).Append(") can inject NOISE this round.\n");
-                }
+                sb.Append("- drone_dynamics: awakened=").Append(awakened ? "true" : "false")
+                  .Append(", noise_capable_ai=").Append(effectiveAiNow).Append("/").Append(ais)
+                  .Append(awakened ? "" : " (drone forced CLEAN until 2 hacks)").Append('\n');
             }
         }
 
