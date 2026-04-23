@@ -36,16 +36,25 @@ jobs:
 
       # Secret から mercury2-config.json を組み立てて StreamingAssets へ。
       # リポジトリはパブリックなのでキーは絶対にコミットしない前提。
+      #
+      # 優先順:
+      #   1. MERCURY2_CONFIG_JSON (新) — 複数プロバイダ対応の JSON 全文を丸ごと格納
+      #   2. MERCURY2_API_KEY 系 (旧)   — 単一プロバイダ互換モード
       - name: Inject Mercury2 config
         env:
+          MERCURY2_CONFIG_JSON: ${{ secrets.MERCURY2_CONFIG_JSON }}
           MERCURY2_API_KEY: ${{ secrets.MERCURY2_API_KEY }}
           MERCURY2_ENDPOINT: ${{ secrets.MERCURY2_ENDPOINT }}
           MERCURY2_MODEL: ${{ secrets.MERCURY2_MODEL }}
         run: |
           mkdir -p Assets/StreamingAssets
-          ENDPOINT="${MERCURY2_ENDPOINT:-https://api.inceptionlabs.ai/v1}"
-          MODEL="${MERCURY2_MODEL:-mercury-2}"
-          cat > Assets/StreamingAssets/mercury2-config.json <<EOF
+          if [ -n "${MERCURY2_CONFIG_JSON}" ]; then
+            printf '%s' "${MERCURY2_CONFIG_JSON}" > Assets/StreamingAssets/mercury2-config.json
+            echo "::notice::Using MERCURY2_CONFIG_JSON (multi-provider) secret."
+          elif [ -n "${MERCURY2_API_KEY}" ]; then
+            ENDPOINT="${MERCURY2_ENDPOINT:-https://api.inceptionlabs.ai/v1}"
+            MODEL="${MERCURY2_MODEL:-mercury-2}"
+            cat > Assets/StreamingAssets/mercury2-config.json <<EOF
           {
             "apiKey": "${MERCURY2_API_KEY}",
             "endpoint": "${ENDPOINT}",
@@ -53,8 +62,10 @@ jobs:
             "model": "${MODEL}"
           }
           EOF
-          if [ -z "${MERCURY2_API_KEY}" ]; then
-            echo "::warning::MERCURY2_API_KEY secret is empty — CPU players will fall back to random behavior."
+            echo "::notice::Using legacy single-provider MERCURY2_API_KEY secret."
+          else
+            echo "::warning::No Mercury2 secret configured — CPU players will fall back to random behavior."
+            echo '{}' > Assets/StreamingAssets/mercury2-config.json
           fi
 
       - name: Build WebGL

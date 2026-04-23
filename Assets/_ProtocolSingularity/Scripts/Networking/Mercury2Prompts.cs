@@ -61,7 +61,7 @@ STRICT output rules:
         public const string VoteSchema = @"{
   ""type"": ""object"",
   ""properties"": {
-    ""thinking"": { ""type"": ""string"", ""description"": ""brief reasoning (<=180 chars): cite the 1-2 key facts that drive the decision"" },
+    ""thinking"": { ""type"": ""string"", ""description"": ""reasoning in <=120 Japanese chars. cite 1-2 key facts."" },
     ""approve"": { ""type"": ""boolean"" },
     ""reasoning"": { ""type"": ""string"", ""description"": ""short public rationale"" }
   },
@@ -72,7 +72,7 @@ STRICT output rules:
         public const string HackSchema = @"{
   ""type"": ""object"",
   ""properties"": {
-    ""thinking"": { ""type"": ""string"", ""description"": ""brief reasoning (<=180 chars): cite the 1-2 key facts that drive the decision"" },
+    ""thinking"": { ""type"": ""string"", ""description"": ""reasoning in <=120 Japanese chars. cite 1-2 key facts."" },
     ""submit_noise"": { ""type"": ""boolean"" },
     ""reasoning"": { ""type"": ""string"", ""description"": ""short public rationale"" }
   },
@@ -83,7 +83,7 @@ STRICT output rules:
         public const string OverrideSchema = @"{
   ""type"": ""object"",
   ""properties"": {
-    ""thinking"": { ""type"": ""string"", ""description"": ""brief reasoning (<=180 chars): cite the 1-2 key facts that drive the decision"" },
+    ""thinking"": { ""type"": ""string"", ""description"": ""reasoning in <=120 Japanese chars. cite 1-2 key facts."" },
     ""target_player_id"": { ""type"": ""integer"" },
     ""reasoning"": { ""type"": ""string"", ""description"": ""short public rationale"" }
   },
@@ -94,7 +94,7 @@ STRICT output rules:
         public const string ChatSchema = @"{
   ""type"": ""object"",
   ""properties"": {
-    ""thinking"": { ""type"": ""string"", ""description"": ""brief reasoning (<=100 chars): what you react to"" },
+    ""thinking"": { ""type"": ""string"", ""description"": ""reasoning in <=80 Japanese chars"" },
     ""message"": { ""type"": ""string"", ""maxLength"": 60 }
   },
   ""required"": [""thinking"", ""message""],

@@ -178,8 +178,9 @@ namespace ProtocolSingularity.Networking
             sb.Append("\"temperature\":")
               .Append(temperature.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))
               .Append(',');
-            // 出力トークン上限 (thinking + action + reasoning 合計を抑える。無料枠節約用)
-            sb.Append("\"max_tokens\":400,");
+            // 出力トークン上限。thinking (最大 ~300) + action + reasoning (~60) を収めるため 1024 を確保。
+            // 低すぎると JSON が途中で切れて message/approve が欠落する (復元不能)。
+            sb.Append("\"max_tokens\":1024,");
             sb.Append("\"messages\":[");
             sb.Append("{\"role\":\"system\",\"content\":").Append(JsonString(systemPrompt)).Append("},");
             sb.Append("{\"role\":\"user\",\"content\":").Append(JsonString(userPrompt)).Append("}");
