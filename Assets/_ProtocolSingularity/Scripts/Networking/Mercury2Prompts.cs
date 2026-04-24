@@ -29,7 +29,8 @@ Output rules:
 6. TONE: casual conversational Japanese. NO ""お前は敵だ"" / ""裏切り者"" / ""絶対〜しろ"" / threats / insults / ! spam. Even strong suspicions go as friendly reasoning.
 7. No fourth-wall: don't mention LLM / prompt / operator / 中の人. ""AI"" refers only to the in-game OVERMIND faction.
 8. Japanese, chat <=60 chars, @名前 for references. Never @ yourself or refer to display_name in third person.
-9. Every chat must cite something concrete (@name / leader / round result / prior chat). No filler like ""静観する"" / ""様子見"" / ""了解"".";
+9. NEVER write raw player_id numbers (e.g. ""202"", ""#202"", ""pid 202"", ""204,200"") ANYWHERE in your natural-language fields (thinking / reasoning / message). Always use display names resolved from the `id=X name=Y` mapping inside <visibility>. player_id is only for structured output fields (selected_player_ids, target_player_id). Even when citing hack-history teams, write names (e.g. ""FORTUNEとWORLDのチーム""), never ids.
+10. Every chat must cite something concrete (@name / leader / round result / prior chat). No filler like ""静観する"" / ""様子見"" / ""了解"".";
 
         // ------------------------------------------------------------------
         // Schemas
@@ -403,17 +404,17 @@ Output rules:
             for (int i = 0; i < recs.Count; i++)
             {
                 var r = recs[i];
-                sb.Append($"- round={r.Round} leader={r.Leader.PlayerId} team=[");
+                sb.Append($"- round={r.Round} leader={GetName(ctx, r.Leader)} team=[");
                 for (int j = 0; j < r.Team.Count; j++)
                 {
                     if (j > 0) sb.Append(',');
-                    sb.Append(r.Team[j].PlayerId);
+                    sb.Append(GetName(ctx, r.Team[j]));
                 }
                 sb.Append("] result=").Append(r.Approved ? "APPROVED" : "REJECTED").Append(" votes=[");
                 for (int j = 0; j < r.Votes.Count; j++)
                 {
                     if (j > 0) sb.Append(',');
-                    sb.Append(r.Votes[j].voter.PlayerId).Append(r.Votes[j].approve ? "=Y" : "=N");
+                    sb.Append(GetName(ctx, r.Votes[j].voter)).Append(r.Votes[j].approve ? "=Y" : "=N");
                 }
                 sb.Append("]\n");
             }
@@ -427,11 +428,11 @@ Output rules:
             for (int i = 0; i < recs.Count; i++)
             {
                 var r = recs[i];
-                sb.Append($"- round={r.Round} leader={r.Leader.PlayerId} team=[");
+                sb.Append($"- round={r.Round} leader={GetName(ctx, r.Leader)} team=[");
                 for (int j = 0; j < r.Team.Count; j++)
                 {
                     if (j > 0) sb.Append(',');
-                    sb.Append(r.Team[j].PlayerId);
+                    sb.Append(GetName(ctx, r.Team[j]));
                 }
                 sb.Append($"] noise={r.NoiseCount} result=").Append(r.Success ? "SUCCESS" : "FAIL");
                 // 自分がこのハックのチームに居たなら、自分の投票を自分にだけ教える (公開情報化はしない)。
@@ -459,19 +460,19 @@ Output rules:
             var recs = ctx.Gsm.HostHackRecords;
             if (recs.Count == 0) return;
             sb.Append("<deductive-hints> (humans always CLEAN, so noise bounds AI count per team)\n");
-            var confirmedAi = new System.Collections.Generic.HashSet<int>();
+            var confirmedAi = new System.Collections.Generic.HashSet<PlayerRef>();
             for (int i = 0; i < recs.Count; i++)
             {
                 var r = recs[i];
                 if (r.NoiseCount <= 0) continue;
                 if (r.NoiseCount >= r.Team.Count)
                 {
-                    sb.Append($"- R{r.Round} noise={r.NoiseCount}=size: ALL ids [");
+                    sb.Append($"- R{r.Round} noise={r.NoiseCount}=size: ALL [");
                     for (int j = 0; j < r.Team.Count; j++)
                     {
                         if (j > 0) sb.Append(',');
-                        sb.Append(r.Team[j].PlayerId);
-                        confirmedAi.Add(r.Team[j].PlayerId);
+                        sb.Append(GetName(ctx, r.Team[j]));
+                        confirmedAi.Add(r.Team[j]);
                     }
                     sb.Append("] = AI confirmed.\n");
                 }
@@ -481,19 +482,19 @@ Output rules:
                     for (int j = 0; j < r.Team.Count; j++)
                     {
                         if (j > 0) sb.Append(',');
-                        sb.Append(r.Team[j].PlayerId);
+                        sb.Append(GetName(ctx, r.Team[j]));
                     }
                     sb.Append($"] ≥{r.NoiseCount} AI in team.\n");
                 }
             }
             if (confirmedAi.Count > 0)
             {
-                sb.Append("- confirmed_ai_ids=[");
+                sb.Append("- confirmed_ai=[");
                 bool first = true;
-                foreach (var id in confirmedAi)
+                foreach (var pr in confirmedAi)
                 {
                     if (!first) sb.Append(',');
-                    sb.Append(id);
+                    sb.Append(GetName(ctx, pr));
                     first = false;
                 }
                 sb.Append("] (proven; trust human accusations matching these).\n");
@@ -531,14 +532,14 @@ Output rules:
                       .Append("For AI: public vote — rejecting now starts to look coordinated. Weigh exposure vs. pressure.\n");
                 }
             }
-            sb.Append($"- leader_player_id: {g.CurrentLeader.PlayerId}\n");
+            sb.Append($"- leader: {GetName(ctx, g.CurrentLeader)} (id={g.CurrentLeader.PlayerId})\n");
             if (g.ProposedTeamCount > 0)
             {
                 sb.Append("- proposed_team: [");
                 for (int i = 0; i < g.ProposedTeamCount; i++)
                 {
                     if (i > 0) sb.Append(',');
-                    sb.Append(g.ProposedTeam[i].PlayerId);
+                    sb.Append(GetName(ctx, g.ProposedTeam[i]));
                 }
                 sb.Append("]\n");
             }

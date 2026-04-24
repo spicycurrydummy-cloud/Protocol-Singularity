@@ -2,12 +2,17 @@
     <Style src="project://database/Assets/_ProtocolSingularity/UI/Shared/Terminal.uss" />
     <Style src="project://database/Assets/_ProtocolSingularity/UI/Title/TitleScreen.uss" />
     <ui:VisualElement class="terminal-root">
+        <!-- 音量コントロール (右下 floating) -->
+        <ui:VisualElement name="audio-panel" class="audio-panel audio-floating" picking-mode="Position">
+            <ui:Button name="audio-mute-btn" text="VOL" class="prompt-btn prompt-btn-small audio-mute-btn" tooltip="Mute toggle" />
+            <ui:Slider name="audio-volume" low-value="0" high-value="1" value="0.6" class="audio-volume" tooltip="Volume" />
+        </ui:VisualElement>
         <ui:VisualElement class="terminal-header">
             <ui:VisualElement class="title-header-row">
                 <ui:Label text="PROTOCOL_SINGULARITY.exe" class="title-text title-header-title" />
                 <ui:Button name="rules-btn" text="[ ? RULES ]" class="prompt-btn prompt-btn-small rules-btn" />
             </ui:VisualElement>
-            <ui:Label text="&gt; OVERMIND // INFILTRATION TERMINAL v0.0.4" class="subtitle-text" />
+            <ui:Label text="&gt; OVERMIND // INFILTRATION TERMINAL v0.0.5" class="subtitle-text" />
             <ui:Label text="&gt; unauthorized access will be logged and overridden." class="subtitle-text" />
         </ui:VisualElement>
 

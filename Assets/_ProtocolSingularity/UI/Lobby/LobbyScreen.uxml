@@ -5,6 +5,11 @@
         <ui:VisualElement class="terminal-header header-with-menu">
             <ui:VisualElement class="header-main">
                 <ui:VisualElement class="lobby-header-row">
+                    <!-- 音量コントロール (SESSION LOBBY の左、ヘッダ内) -->
+                    <ui:VisualElement name="audio-panel" class="audio-panel audio-inline" picking-mode="Position">
+                        <ui:Button name="audio-mute-btn" text="VOL" class="prompt-btn prompt-btn-small audio-mute-btn" tooltip="Mute toggle" />
+                        <ui:Slider name="audio-volume" low-value="0" high-value="1" value="0.6" class="audio-volume" tooltip="Volume" />
+                    </ui:VisualElement>
                     <ui:Label name="scene-title" text="SESSION LOBBY" class="title-text" />
                     <ui:Label name="session-code-line" text="[----------]" class="title-text session-code" />
                 </ui:VisualElement>
@@ -36,14 +41,14 @@
                     <ui:Label text="&gt; プレイヤー数" class="label" />
                     <ui:SliderInt name="player-count-slider" low-value="6" high-value="10" value="6" show-input-field="true" />
 
-                    <ui:Label text="&gt; ディスカッション時間 (秒)" class="label setting-label" />
-                    <ui:SliderInt name="discussion-slider" low-value="30" high-value="180" value="60" show-input-field="true" />
-
                     <ui:Label text="&gt; 投票時間 (秒)" class="label setting-label" />
                     <ui:SliderInt name="vote-slider" low-value="15" high-value="90" value="30" show-input-field="true" />
 
                     <ui:Label text="&gt; ハッキング時間 (秒)" class="label setting-label" />
                     <ui:SliderInt name="hack-slider" low-value="15" high-value="60" value="30" show-input-field="true" />
+
+                    <ui:Label text="&gt; OVERRIDE 議論時間 (秒)" class="label setting-label" />
+                    <ui:SliderInt name="discussion-slider" low-value="30" high-value="180" value="30" show-input-field="true" />
 
                     <ui:Toggle name="cpu-fill-toggle" text="CPU オペレーターを補充" value="true" class="lobby-toggle" />
 

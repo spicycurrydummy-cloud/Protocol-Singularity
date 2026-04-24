@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Fusion;
+using ProtocolSingularity.Audio;
 using ProtocolSingularity.Core;
 using ProtocolSingularity.Data;
 using ProtocolSingularity.Networking;
@@ -197,6 +198,9 @@ namespace ProtocolSingularity.UI
         private int _overrideTargetPickId = -1;
         private bool _hasSubmittedOverrideVote;
         private GamePhase _lastObservedPhase = GamePhase.Lobby;
+        // Audio: 直前の phase / 得点を記録して変化タイミングで SFX を鳴らす
+        private GamePhase _lastAudioPhase = GamePhase.Title;
+        private int _lastAudioSuccess = -1;
 
         // ==========================================================
         // Lifecycle
@@ -209,6 +213,10 @@ namespace ProtocolSingularity.UI
 
             QueryElements(root);
             WireEvents();
+
+            // 音量 UI + ホバー Tick 配線 (Lobby 画面の Button は多数あり、Phase 切替時にも追加される)
+            AudioUIBinder.BindPanel(root);
+            AudioUIBinder.WireHoverTicks(root);
 
             _sm = FusionSessionManager.Instance;
             if (_sm == null || _sm.Runner == null)
@@ -672,6 +680,8 @@ namespace ProtocolSingularity.UI
         private void ShowDroneAwakenOverlay(GameStateManager gsm)
         {
             if (_droneAwakenOverlay == null) return;
+            // 覚醒イベントは緊張感を出したいので Modal ではなく Warning SFX を鳴らす
+            AudioManager.Instance.PlaySfx(SfxKey.Warning);
             bool isAi = gsm.HasLocalRole && gsm.LocalRole.IsAI();
             // 覚醒した Drone 本人も AI 陣営側の文言を見る (今やAIの一員)
             if (_droneAwakenHeadline != null)
@@ -807,6 +817,8 @@ namespace ProtocolSingularity.UI
                 HideAllPhaseSections();
                 SetDisplay(_phasePopupOverlay, false);
                 SetDisplay(_phasePopupReopenBar, false);
+                // Lobby に戻った時の BGM 切替を漏らさないよう return 前に実行
+                if (gsm != null) HandleAudio(gsm, phase);
                 return;
             }
             ApplyPhasePopupVisibility();
@@ -826,6 +838,83 @@ namespace ProtocolSingularity.UI
             UpdateRoleDisplay();
             RefreshIngamePlayerList();
             UpdateActionPanel(phase, gsm);
+            HandleAudio(gsm, phase);
+            // 動的に生成された Button (player-list 行, override targets, etc.) にも Tick を付け直す
+            if (_doc != null && _doc.rootVisualElement != null)
+                AudioUIBinder.WireHoverTicks(_doc.rootVisualElement);
+        }
+
+        // ==========================================================
+        // Audio (SFX / BGM) — OnGameStateChanged から呼ぶ
+        // ==========================================================
+        private void HandleAudio(GameStateManager gsm, GamePhase phase)
+        {
+            var am = AudioManager.Instance;
+
+            if (phase != _lastAudioPhase)
+            {
+                // Accept / Deny: 投票結果のフェーズ遷移から推定
+                //   ApprovalVote → Hacking       : 可決
+                //   ApprovalVote → TeamProposal  : 否決 (次リーダーへ)
+                if (_lastAudioPhase == GamePhase.ApprovalVote)
+                {
+                    if (phase == GamePhase.Hacking) am.PlaySfx(SfxKey.Accept);
+                    else if (phase == GamePhase.TeamProposal) am.PlaySfx(SfxKey.Deny);
+                }
+
+                // ハック結果 SFX: Hacking → RoundResult に入った瞬間の成功/失敗で分岐
+                if (_lastAudioPhase == GamePhase.Hacking && phase == GamePhase.RoundResult)
+                {
+                    bool success = _lastAudioSuccess >= 0 && gsm.SuccessCount > _lastAudioSuccess;
+                    am.PlaySfx(success ? SfxKey.HackSuccess : SfxKey.HackFailed);
+                }
+
+                // Loading はプログレスバー開始時 (AnimateHackProgress) で別途鳴らすので、
+                // ここ (phase 遷移) では鳴らさない。Accept と同時発火すると片方がマスクされるため。
+
+                // OVERRIDE 系フェーズ入りは直前 phase に関係なく Warning を鳴らす (逆侵攻演出)。
+                //   RoundResult → OverrideDiscussion は両方 modal なので通常の Modal 判定だと鳴らない
+                bool nowOverride = phase == GamePhase.OverrideDiscussion
+                    || phase == GamePhase.OverrideVote
+                    || phase == GamePhase.OverrideResult;
+                bool wasOverride = _lastAudioPhase == GamePhase.OverrideDiscussion
+                    || _lastAudioPhase == GamePhase.OverrideVote
+                    || _lastAudioPhase == GamePhase.OverrideResult;
+                if (nowOverride && !wasOverride)
+                {
+                    am.PlaySfx(SfxKey.Warning);
+                }
+                // 通常 Modal: 非 modal → modal 遷移 (OVERRIDE は別処理済みなので除外)
+                else if (IsModalPhase(phase) && !IsModalPhase(_lastAudioPhase))
+                {
+                    am.PlaySfx(SfxKey.Modal);
+                }
+
+                _lastAudioPhase = phase;
+            }
+            _lastAudioSuccess = gsm.SuccessCount;
+
+            // BGM 選択
+            am.PlayBgm(SelectBgm(gsm, phase));
+        }
+
+        private static bool IsModalPhase(GamePhase p) =>
+            p == GamePhase.TeamProposal || p == GamePhase.ApprovalVote
+            || p == GamePhase.Hacking || p == GamePhase.RoundResult
+            || p == GamePhase.OverrideDiscussion || p == GamePhase.OverrideVote
+            || p == GamePhase.OverrideResult || p == GamePhase.GameEnd;
+
+        private static BgmPhase SelectBgm(GameStateManager gsm, GamePhase phase)
+        {
+            if (phase == GamePhase.Lobby || phase == GamePhase.Title) return BgmPhase.Lobby;
+            // OVERRIDE: Final 楽曲未実装のため Last 流用
+            if (phase == GamePhase.OverrideDiscussion || phase == GamePhase.OverrideVote || phase == GamePhase.OverrideResult)
+                return BgmPhase.Last;
+            // AI 失敗 (= 人類ハック成功) ではなく、AI が 2 点 = ハック失敗 2 回で Last 系に切替
+            if (gsm.FailureCount >= 2) return BgmPhase.Last;
+            // R3 以降 (= R2 終了後) は 2nd
+            if (gsm.Round >= 3) return BgmPhase.Round2;
+            return BgmPhase.Round1;
         }
 
         private void HideAllPhaseSections()
@@ -1215,6 +1304,8 @@ namespace ProtocolSingularity.UI
                 StopCoroutine(_hackProgressCo);
                 _hackProgressCo = null;
             }
+            // Loading ループ停止 (Hacking 画面から抜けるタイミング)
+            ProtocolSingularity.Audio.AudioManager.Instance.StopSfxLoop();
         }
 
         /// <summary>
@@ -1282,6 +1373,8 @@ namespace ProtocolSingularity.UI
         private IEnumerator AnimateHackProgress(float durationSeconds)
         {
             if (_hackingFlavor == null) yield break;
+            // プログレスバー演出の間は Loading を持続音としてループ再生 (Hacking フェーズ終了時に停止)
+            ProtocolSingularity.Audio.AudioManager.Instance.PlaySfxLoop(ProtocolSingularity.Audio.SfxKey.Loading);
             // 演出時間の配分: 前半で preamble 行を順次表示 (行数 × 0.3s 上限)、残りで pct アニメ
             float linePhase = Mathf.Min(durationSeconds * 0.45f, HackPreambleLines.Length * 0.3f);
             float perLine = Mathf.Max(0.1f, linePhase / HackPreambleLines.Length);
@@ -1368,7 +1461,7 @@ namespace ProtocolSingularity.UI
             // 議論時間いっぱいで 0% -> 95% までアニメーション。以降は 95% で待機。
             StopOverrideHumanAnim();
             float duration = HostSettings.Instance != null && HostSettings.Instance.DiscussionSeconds > 0
-                ? HostSettings.Instance.DiscussionSeconds : 60f;
+                ? HostSettings.Instance.DiscussionSeconds : 30f;
             _overrideHumanAnimCo = StartCoroutine(AnimateOverrideProgress(isAi, duration));
         }
 

@@ -717,7 +717,7 @@ namespace ProtocolSingularity.Networking
             Phase = GamePhase.OverrideDiscussion;
             LogEvent("[OVERRIDE] MotherCore protection lifted. AI counterstrike begins.");
 
-            int discussionTime = HostSettings.Instance != null ? HostSettings.Instance.DiscussionSeconds : 60;
+            int discussionTime = HostSettings.Instance != null ? HostSettings.Instance.DiscussionSeconds : 30;
             if (_overridePhaseTimer != null) StopCoroutine(_overridePhaseTimer);
             _overridePhaseTimer = StartCoroutine(DelayThen(discussionTime, BeginOverrideVote));
         }

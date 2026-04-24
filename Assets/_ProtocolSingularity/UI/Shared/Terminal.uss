@@ -211,3 +211,68 @@
     margin-bottom: 16px;
     -unity-text-align: middle-center;
 }
+
+/* =========================================
+   Audio control panel (bottom-left overlay)
+   ========================================= */
+/* 共通: flex 行 + 半透明背景 */
+.audio-panel {
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(8, 12, 8, 0.7);
+    border-width: 1px;
+    border-color: var(--ps-accent-dim);
+    padding: 6px 10px;
+    opacity: 0.7;
+    transition-property: opacity;
+    transition-duration: 0.15s;
+}
+
+/* Lobby: ヘッダの SESSION LOBBY ラベル左に並べる */
+.audio-panel.audio-inline {
+    margin-right: 16px;
+    align-self: center;
+}
+
+/* Title: 画面右下 floating */
+.audio-panel.audio-floating {
+    position: absolute;
+    right: 24px;
+    bottom: 24px;
+}
+.audio-panel:hover {
+    opacity: 1;
+}
+
+/* Mute ボタン (テキストは ♪ / ∅ を AudioUIBinder で切替) */
+.audio-mute-btn {
+    margin: 0 10px 0 0;
+    min-width: 36px;
+    padding: 2px 8px;
+    flex-shrink: 0;
+}
+
+/* Slider: 内部 Label を消して、track を縦方向中央に配置。
+   UI Toolkit の Slider は内部 flex-direction=column で自然配置されるため、
+   内部 input 全体に margin: auto 0 を与えて空きスペースの中央に寄せる。 */
+.audio-volume {
+    width: 130px;
+    min-width: 130px;
+    margin: 0;
+    flex-shrink: 0;
+    justify-content: center;
+    align-items: stretch;
+}
+.audio-volume > Label {
+    display: none;
+}
+.audio-volume .unity-base-slider__input {
+    margin-top: auto;
+    margin-bottom: auto;
+    justify-content: center;
+}
+.audio-volume .unity-base-slider__drag-container {
+    margin-top: auto;
+    margin-bottom: auto;
+    justify-content: center;
+}

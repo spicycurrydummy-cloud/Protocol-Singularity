@@ -30,7 +30,7 @@ namespace ProtocolSingularity.Networking
             if (HasStateAuthority)
             {
                 if (TargetPlayerCount == 0) TargetPlayerCount = 6;
-                if (DiscussionSeconds == 0) DiscussionSeconds = 60;
+                if (DiscussionSeconds == 0) DiscussionSeconds = 30;
                 if (VoteSeconds == 0) VoteSeconds = 30;
                 if (HackSeconds == 0) HackSeconds = 30;
                 EnableCpuFill = true;

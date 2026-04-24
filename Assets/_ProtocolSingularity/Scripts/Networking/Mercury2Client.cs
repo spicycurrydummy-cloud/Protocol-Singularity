@@ -32,7 +32,9 @@ namespace ProtocolSingularity.Networking
             var providers = cfg.GetActiveProviders();
             if (providers.Count == 0) return null;
 
-            float temp = temperatureOverride ?? 0.4f;
+            // Mercury2 は temperature の下限が 0.5 なので、0.4 等で送ると自動的に 0.75 に書き換えられる警告が返る。
+            // 他プロバイダでも 0.5 は許容範囲 (OpenAI 互換は [0.0, 2.0])。
+            float temp = Mathf.Max(0.5f, temperatureOverride ?? 0.5f);
 
             // 直近成功プロバイダから始めて、失敗したら順番に次へ
             int startIdx = System.Math.Min(_preferredProviderIndex, providers.Count - 1);
@@ -66,7 +68,7 @@ namespace ProtocolSingularity.Networking
         // WebGL で SemaphoreSlim が正しく signal 伝搬しない問題を避けるため Interlocked + Task.Yield で実装。
         private static int _gateLocked; // 0=free, 1=locked
         private static DateTime _lastCallUtc = DateTime.MinValue;
-        private const double MinGapSeconds = 2.2; // ~27 RPM (Cerebras free 30 RPM を安全に下回る)
+        private const double MinGapSeconds = 1.0; // ~60 RPM。Mercury2 主力運用時のテンポ優先。フォールバック時の Cerebras 30 RPM も瞬間では抵触しない
 
         private struct TryResult
         {
@@ -239,7 +241,9 @@ namespace ProtocolSingularity.Networking
               .Append(temperature.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))
               .Append(',');
             // 出力トークン上限。thinking (最大 ~300) + action + reasoning (~60) を収めるため 1024 を確保。
-            sb.Append("\"max_tokens\":1024,");
+            // Mercury2 等の推論モデルは reasoning_tokens を数百〜1500 消費してから出力する。
+            // 1024 だと思考で尽きて completion が空になるので 4096 まで拡張。
+            sb.Append("\"max_tokens\":4096,");
             sb.Append("\"messages\":[");
             sb.Append("{\"role\":\"system\",\"content\":").Append(JsonString(systemPrompt)).Append("},");
             sb.Append("{\"role\":\"user\",\"content\":").Append(JsonString(userPrompt)).Append("}");

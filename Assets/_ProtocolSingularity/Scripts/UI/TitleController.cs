@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Fusion;
+using ProtocolSingularity.Audio;
 using ProtocolSingularity.Core;
 using ProtocolSingularity.Networking;
 using UnityEngine;
@@ -71,6 +72,11 @@ namespace ProtocolSingularity.UI
 
             EnsureSessionManager();
             EnsureImeBridge();
+
+            // 音量 UI バインド + 全 Button に Tick 配線 + Lobby BGM 再生開始
+            AudioUIBinder.BindPanel(root);
+            AudioUIBinder.WireHoverTicks(root);
+            AudioManager.Instance.PlayBgm(BgmPhase.Lobby);
 
             // TextField.value は UI Toolkit の view-data 永続化や Editor セッションの残骸で
             // 前回入力が残ることがあるため、明示的に空文字で上書きする。
