@@ -68,6 +68,11 @@ namespace ProtocolSingularity.Networking
         [Networked, OnChangedRender(nameof(OnChanged))] public int HackHistoryCount { get; set; }
         [Networked, OnChangedRender(nameof(OnChanged))] public NetworkString<_512> RevealedRoles { get; set; }
         /// <summary>
+        /// 試合後のキー役職コメント (Oracle/Admin/MotherCore の CPU が一言)。
+        /// 形式: "role1:playerId1:comment1|role2:playerId2:comment2|..."
+        /// </summary>
+        [Networked, OnChangedRender(nameof(OnChanged))] public NetworkString<_512> PostMatchComments { get; set; }
+        /// <summary>
         /// 過去のハッキング詳細 (全クライアント共有)。形式: "round:leaderId:memberId,memberId,..:noise:success(1/0)" を '|' 区切り。
         /// プレイヤー名は PlayerRegistry 側で解決する。
         /// </summary>

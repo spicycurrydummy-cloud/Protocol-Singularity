@@ -102,6 +102,16 @@ Strategy heuristics (Avalon-standard, apply when relevant):
   ""additionalProperties"": false
 }";
 
+        public const string PostMatchReviewSchema = @"{
+  ""type"": ""object"",
+  ""properties"": {
+    ""thinking"": { ""type"": ""string"", ""description"": ""brief reflection (<=80 JP chars)"" },
+    ""comment"": { ""type"": ""string"", ""description"": ""in-character 1-line post-match comment, <=60 JP chars, no | or : characters"" }
+  },
+  ""required"": [""thinking"", ""comment""],
+  ""additionalProperties"": false
+}";
+
         // ------------------------------------------------------------------
         // User prompts
         // ------------------------------------------------------------------
@@ -168,6 +178,26 @@ Strategy heuristics (Avalon-standard, apply when relevant):
             sb.Append("\nOVERRIDE phase: AI wins if its collective vote targets the real ORACLE. ")
               .Append("Pick one player_id to override. ")
               .Append("Reply in JSON {\"target_player_id\":N,\"reasoning\":\"...\"}.");
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// 試合終了後の 1 行コメント生成用 (Oracle / Admin / MotherCore 向け)。
+        /// 自役職視点での振り返りを短く。他役職の正体暴露は避ける (ゲーム感想のノリ)。
+        /// </summary>
+        public static string BuildPostMatchReviewPrompt(CpuContext ctx)
+        {
+            var sb = new StringBuilder(1024);
+            AppendIdentity(sb, ctx);
+            AppendVoteHistory(sb, ctx);
+            AppendHackHistory(sb, ctx);
+            AppendCurrentState(sb, ctx);
+            sb.Append("\nGame is OVER. Give a short, in-character post-match comment from your role's perspective (1 line).\n")
+              .Append("- Reflect on a turning point you experienced (hack result, a vote you made, an OVERRIDE call).\n")
+              .Append("- Stay in your speech_style. Casual game-recap tone — like chatting after a board game session.\n")
+              .Append("- Don't expose other players' roles or re-accuse. Assume the match is fully resolved.\n")
+              .Append("- <=60 Japanese chars. No | or : characters.\n")
+              .Append("JSON only: {\"thinking\":\"...\",\"comment\":\"...\"}.");
             return sb.ToString();
         }
 

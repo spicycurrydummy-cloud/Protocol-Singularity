@@ -151,7 +151,7 @@ namespace ProtocolSingularity.Networking
             return msg;
         }
 
-        private static string ExtractString(string json, string key)
+        public static string ExtractString(string json, string key)
         {
             int idx = FindKey(json, key);
             if (idx < 0) return null;

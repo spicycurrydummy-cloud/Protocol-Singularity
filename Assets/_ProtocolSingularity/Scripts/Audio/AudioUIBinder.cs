@@ -56,6 +56,8 @@ namespace ProtocolSingularity.Audio
             if (btn.userData is string tag && tag == "tick-wired") return;
             btn.userData = "tick-wired";
             btn.RegisterCallback<MouseEnterEvent>(_ => AudioManager.Instance.PlaySfx(SfxKey.Tick));
+            // 押下時は Click SFX を鳴らす (Button.clicked は enabled 時のみ発火)
+            btn.clicked += () => AudioManager.Instance.PlaySfx(SfxKey.Click);
         }
     }
 }

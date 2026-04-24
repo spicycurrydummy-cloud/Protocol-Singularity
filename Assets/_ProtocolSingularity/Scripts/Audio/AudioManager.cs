@@ -14,6 +14,7 @@ namespace ProtocolSingularity.Audio
         HackSuccess,
         HackFailed,
         Warning,
+        Click,
     }
 
     /// <summary>
@@ -129,6 +130,7 @@ namespace ProtocolSingularity.Audio
             SfxKey.HackSuccess => "Hack_Success",
             SfxKey.HackFailed => "Hack_Failed",
             SfxKey.Warning => "Warning",
+            SfxKey.Click => "Click",
             _ => k.ToString(),
         };
 

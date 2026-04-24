@@ -136,6 +136,7 @@ namespace ProtocolSingularity.UI
         private Label _gameendHeadline;
         private Label _gameendDetail;
         private Label _gameendHackHistory;
+        private Label _gameendReviews;
         private ScrollView _gameendRolesList;
         private Button _gameendReturnBtn;
 
@@ -397,6 +398,7 @@ namespace ProtocolSingularity.UI
             _gameendHeadline = root.Q<Label>("gameend-headline");
             _gameendDetail = root.Q<Label>("gameend-detail");
             _gameendHackHistory = root.Q<Label>("gameend-hack-history");
+            _gameendReviews = root.Q<Label>("gameend-reviews");
             _gameendRolesList = root.Q<ScrollView>("gameend-roles-list");
             _gameendReturnBtn = root.Q<Button>("gameend-return-btn");
 
@@ -1656,6 +1658,42 @@ namespace ProtocolSingularity.UI
                     sb.Append(r == 1 ? "[OK]" : r == 2 ? "[FAIL]" : "[??]");
                 }
                 _gameendHackHistory.text = sb.ToString();
+            }
+
+            // 試合後コメント (Oracle / Admin / MotherCore CPU が一言ずつ)
+            if (_gameendReviews != null)
+            {
+                var raw = gsm.PostMatchComments.ToString();
+                if (string.IsNullOrEmpty(raw))
+                {
+                    _gameendReviews.text = "> 集計中...";
+                }
+                else
+                {
+                    var sbR = new System.Text.StringBuilder();
+                    foreach (var entry in raw.Split('|'))
+                    {
+                        if (string.IsNullOrEmpty(entry)) continue;
+                        var parts = entry.Split(':');
+                        if (parts.Length < 3) continue;
+                        if (!int.TryParse(parts[0], out var roleInt)) continue;
+                        if (!int.TryParse(parts[1], out var pid)) continue;
+                        var role = (RoleType)roleInt;
+                        string name = "???";
+                        var reg2 = PlayerRegistry.Instance;
+                        if (reg2 != null)
+                        {
+                            for (int i = 0; i < reg2.Count; i++)
+                                if (reg2.Entries[i].PlayerRef.PlayerId == pid) { name = reg2.Entries[i].DisplayName; break; }
+                        }
+                        string comment = parts[2];
+                        // ':' が comment 内にあった場合の復元 (Split で分断されたぶんを結合)
+                        for (int i = 3; i < parts.Length; i++) comment += ":" + parts[i];
+                        if (sbR.Length > 0) sbR.Append('\n');
+                        sbR.Append($"[{role}] {name}: {comment}");
+                    }
+                    _gameendReviews.text = sbR.ToString();
+                }
             }
 
             // Role disclosure

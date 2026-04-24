@@ -255,6 +255,9 @@ namespace ProtocolSingularity.Networking
                 _lastRound = gsm.Round;
                 _lastLeaderIdx = gsm.CurrentLeaderIndex;
 
+                // Lobby に戻った時は post-match フラグをリセットして次試合に備える
+                if (gsm.Phase == GamePhase.Lobby) _postMatchDone = false;
+
                 switch (gsm.Phase)
                 {
                     // API コスト削減のため、チャット生成は議論中心フェーズのみ。
@@ -265,6 +268,7 @@ namespace ProtocolSingularity.Networking
                     case GamePhase.Hacking: ScheduleHacking(gsm, reg); break;
                     case GamePhase.OverrideDiscussion: ScheduleChat(gsm, reg); break;
                     case GamePhase.OverrideVote: ScheduleOverrideVote(gsm, reg); break;
+                    case GamePhase.GameEnd: SchedulePostMatchReviews(gsm, reg); break;
                 }
             }
         }
@@ -458,6 +462,50 @@ namespace ProtocolSingularity.Networking
             if (gsm.Phase != GamePhase.OverrideVote) return;
             if (target == PlayerRef.None) return;
             gsm.Rpc_SubmitOverrideVote(voter, target);
+        }
+
+        // ==========================================================
+        // Post-match: Oracle / Admin / MotherCore の CPU 各 1 人に一言感想を生成させる。
+        // 試合終了後のちょっとした振り返り用。
+        // ==========================================================
+        private bool _postMatchDone;
+
+        private void SchedulePostMatchReviews(GameStateManager gsm, PlayerRegistry reg)
+        {
+            if (_postMatchDone) return;
+            _postMatchDone = true;
+            StartCoroutine(RunAfterDelay(1.5f, () => GeneratePostMatchReviewsAsync(gsm, reg)));
+        }
+
+        private async Task GeneratePostMatchReviewsAsync(GameStateManager gsm, PlayerRegistry reg)
+        {
+            if (!HasStateAuthority || gsm == null) return;
+            var keyRoles = new[] { RoleType.Oracle, RoleType.Admin, RoleType.MotherCore };
+            var parts = new List<string>();
+            for (int i = 0; i < gsm.LeaderOrderCount; i++)
+            {
+                var p = gsm.LeaderOrder[i];
+                if (!CpuPlayerRef.IsCpu(p)) continue;
+                if (!gsm.TryGetHostRole(p, out var role)) continue;
+                if (System.Array.IndexOf(keyRoles, role) < 0) continue;
+                var ctx = BuildContext(p, role, gsm, reg);
+                var json = await Mercury2Client.ChatJsonAsync(
+                    Mercury2Prompts.SystemPrompt,
+                    Mercury2Prompts.BuildPostMatchReviewPrompt(ctx),
+                    "PostMatchReview",
+                    Mercury2Prompts.PostMatchReviewSchema,
+                    _cts.Token);
+                if (string.IsNullOrEmpty(json)) continue;
+                var comment = Mercury2CpuBrain.ExtractString(json, "comment");
+                if (string.IsNullOrEmpty(comment)) continue;
+                if (comment.Length > 80) comment = comment.Substring(0, 80);
+                // 区切り文字を comment から除去 (保険)
+                comment = comment.Replace('|', ' ').Replace(':', ' ');
+                parts.Add($"{(int)role}:{p.PlayerId}:{comment}");
+            }
+            if (parts.Count == 0) return;
+            if (gsm == null) return;
+            gsm.PostMatchComments = string.Join("|", parts);
         }
 
         // ==========================================================

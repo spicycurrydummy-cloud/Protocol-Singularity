@@ -207,6 +207,9 @@
                     <ui:Label text="&gt; ハッキング結果" class="label label-accent setting-label" />
                     <ui:Label name="gameend-hack-history" text="" class="label hack-history" />
 
+                    <ui:Label text="&gt; 試合後コメント" class="label label-accent setting-label" />
+                    <ui:Label name="gameend-reviews" text="&gt; 集計中..." class="label post-match-reviews" />
+
                     <ui:Label text="&gt; ROLE DISCLOSURE" class="label label-accent setting-label" />
                     <ui:ScrollView name="gameend-roles-list" class="player-list" />
 
