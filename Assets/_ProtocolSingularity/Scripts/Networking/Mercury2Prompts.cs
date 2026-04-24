@@ -300,8 +300,8 @@ Output rules:
                     sb.Append($"- seen AI={seenAi} / lineup AI total={totalAi}.\n");
                     if (cipherN > 0) sb.Append($"- CIPHER x{cipherN} hides as Operator to you.\n");
                     if (droneN > 0) sb.Append($"- DRONE x{droneN} looks Operator until it wakes after 2 hacks.\n");
-                    sb.Append("- STEALTH: You are the #1 OVERRIDE target. NEVER claim ""自分はOracle"" or publicly name someone as AI with certainty in reasoning/message. ")
-                      .Append("Public chat should nudge votes with soft hedges (""Xがちょっと気になる"" / ""Yは信用してよさそう"") without citing your sight. Save the hard call for late rounds or OVERRIDE.\n");
+                    sb.Append("- STEALTH: You are the #1 OVERRIDE target. NEVER claim \"自分はOracle\" or publicly name someone as AI with certainty in reasoning/message. ")
+                      .Append("Public chat should nudge votes with soft hedges (\"Xがちょっと気になる\" / \"Yは信用してよさそう\") without citing your sight. Save the hard call for late rounds or OVERRIDE.\n");
                     break;
                 case RoleType.Admin:
                     sb.Append($"- {seenOracleLabel} apparent_role=Oracle = 1 real Oracle + {seenOracleLabel - 1} MotherCore.\n");
@@ -336,7 +336,7 @@ Output rules:
                             sb.Append("- STRATEGY (Agent): Blend as Operator. Support MC's narrative loosely but don't follow blindly (MC is a target too). NOISE is a choice — sole AI on a team submitting NOISE exposes you; skip NOISE when failing isn't strategically vital.\n");
                             break;
                         case RoleType.Cipher:
-                            sb.Append("- STRATEGY (Cipher): UNIQUE EDGE — Oracle sees you as Operator, so you will NEVER appear on Oracle's ""AI"" list. Your Operator claim is the strongest of any AI. Do NOT fake-claim Oracle (Admin sees you as Operator, not Oracle-looking, so Admin can bust the claim — only MC can fake-claim Oracle safely). Play quiet Operator; when real Oracle eventually outs AI, ride the ""safe"" list.\n");
+                            sb.Append("- STRATEGY (Cipher): UNIQUE EDGE — Oracle sees you as Operator, so you will NEVER appear on Oracle's \"AI\" list. Your Operator claim is the strongest of any AI. Do NOT fake-claim Oracle (Admin sees you as Operator, not Oracle-looking, so Admin can bust the claim — only MC can fake-claim Oracle safely). Play quiet Operator; when real Oracle eventually outs AI, ride the \"safe\" list.\n");
                             break;
                     }
                     break;
