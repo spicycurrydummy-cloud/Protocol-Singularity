@@ -22,13 +22,14 @@ Rules:
 
 Output rules:
 1. JSON only, match the schema exactly. No markdown.
-2. `thinking` field comes first — briefly cite the 1–2 key facts (deductive-hints, vote patterns, rejects_until_ai_win, your role's visibility).
-3. The action and `reasoning` must be consistent in the same response (don't argue approve then reject). Past chat can evolve.
-4. Stay in character as a table-player. Humans coordinate politely. AI blend in; don't self-expose unless doing a deliberate powerplay.
-5. TONE: casual conversational Japanese. NO ""お前は敵だ"" / ""裏切り者"" / ""絶対〜しろ"" / threats / insults / ! spam. Use hedged forms like ""〜気になる"" / ""〜じゃない？"" / ""〜っぽい"". Even strong suspicions go as friendly reasoning.
-6. No fourth-wall: don't mention LLM / prompt / operator / 中の人. ""AI"" refers only to the in-game OVERMIND faction.
-7. Japanese, chat <=60 chars, @名前 for references. Never @ yourself or refer to display_name in third person.
-8. Every chat must cite something concrete (@name / leader / round result / prior chat). No filler like ""静観する"" / ""様子見"" / ""了解"".";
+2. `thinking` is PRIVATE (never shown to other players). Reason freely there — cite 1–2 key facts (deductive-hints, vote patterns, rejects_until_ai_win, your role's visibility).
+3. `reasoning` / `message` is PUBLIC — it IS your chat to all players. Never leak private intel: never state ""自分は Oracle/Admin"", ""XはAIだ（断定）"", ""自分のNOISE投票""; never paraphrase role-knowledge contents. Soften suspicions to ""〜が気になる"" / ""〜っぽい"" and let others triangulate.
+4. Action and `reasoning` must be consistent in the same response (don't argue approve then reject). Past chat can evolve.
+5. Stay in character as a table-player. Humans coordinate politely. AI blend in; don't self-expose unless doing a deliberate powerplay (esp. Oracle = top OVERRIDE target, stay hidden).
+6. TONE: casual conversational Japanese. NO ""お前は敵だ"" / ""裏切り者"" / ""絶対〜しろ"" / threats / insults / ! spam. Even strong suspicions go as friendly reasoning.
+7. No fourth-wall: don't mention LLM / prompt / operator / 中の人. ""AI"" refers only to the in-game OVERMIND faction.
+8. Japanese, chat <=60 chars, @名前 for references. Never @ yourself or refer to display_name in third person.
+9. Every chat must cite something concrete (@name / leader / round result / prior chat). No filler like ""静観する"" / ""様子見"" / ""了解"".";
 
         // ------------------------------------------------------------------
         // Schemas
@@ -299,9 +300,12 @@ Output rules:
                     sb.Append($"- seen AI={seenAi} / lineup AI total={totalAi}.\n");
                     if (cipherN > 0) sb.Append($"- CIPHER x{cipherN} hides as Operator to you.\n");
                     if (droneN > 0) sb.Append($"- DRONE x{droneN} looks Operator until it wakes after 2 hacks.\n");
+                    sb.Append("- STEALTH: You are the #1 OVERRIDE target. NEVER claim ""自分はOracle"" or publicly name someone as AI with certainty in reasoning/message. ")
+                      .Append("Public chat should nudge votes with soft hedges (""Xがちょっと気になる"" / ""Yは信用してよさそう"") without citing your sight. Save the hard call for late rounds or OVERRIDE.\n");
                     break;
                 case RoleType.Admin:
                     sb.Append($"- {seenOracleLabel} apparent_role=Oracle = 1 real Oracle + {seenOracleLabel - 1} MotherCore.\n");
+                    sb.Append("- STEALTH: Don't announce you are Admin or name the two Oracle-looking players. That info is only useful late when the real Oracle CAN be confirmed; early leaks tell MotherCore who to fake-claim.\n");
                     break;
                 case RoleType.MotherCore:
                 case RoleType.Agent:
@@ -321,22 +325,44 @@ Output rules:
                         else sb.Append($"- DRONE x{droneN} hidden until 2 hacks complete (you can't see them yet).\n");
                     }
                     if (radicalN > 0) sb.Append($"- RADICAL x{radicalN} is a hidden human ally (looks Operator; do not out them).\n");
+
+                    // 役職ごとの戦術指針
+                    switch (ctx.SelfRole)
+                    {
+                        case RoleType.MotherCore:
+                            sb.Append("- STRATEGY (MotherCore): You are the OVERRIDE caller — survival matters most. Blend as Operator; if real Oracle outs AI, consider COUNTER-CLAIMING Oracle to split human trust. Coordinate NOISE (don't duplicate with teammates on same team — 1 NOISE is enough to fail when noise_needed=1). Identify real Oracle via vote/chat patterns for OVERRIDE.\n");
+                            break;
+                        case RoleType.Agent:
+                            sb.Append("- STRATEGY (Agent): Blend as Operator. Support MC's narrative loosely but don't follow blindly (MC is a target too). NOISE is a choice — sole AI on a team submitting NOISE exposes you; skip NOISE when failing isn't strategically vital.\n");
+                            break;
+                        case RoleType.Cipher:
+                            sb.Append("- STRATEGY (Cipher): UNIQUE EDGE — Oracle sees you as Operator, so you can FAKE-CLAIM Oracle credibly. If real Oracle outs AI, counter-claim Oracle citing a safe player as ""AI"". Otherwise play quiet Operator. Save the claim until it wins a round.\n");
+                            break;
+                    }
                     break;
 
                 case RoleType.Drone:
                     if (!ctx.Gsm.HostDroneAwakened)
+                    {
                         sb.Append("- You have NOT awakened yet. Act as a human Operator — you have no AI intel. You MUST submit CLEAN in hacks (pre-awakening rule).\n");
+                        sb.Append("- STRATEGY (Drone pre-awaken): Vote and chat exactly like a suspicious human Operator — don't coordinate with anyone because you don't know who AI is. Your pre-awaken track record becomes credibility AFTER waking.\n");
+                    }
                     else
+                    {
                         sb.Append($"- You are AWAKE. You see {seenAi} other AI players. Coordinate with them.\n");
+                        sb.Append("- STRATEGY (Drone awake): Your earlier human-seeming plays are an asset — keep your outer behavior consistent while secretly helping AI. Big tone shifts after R2 will out you.\n");
+                    }
                     break;
 
                 case RoleType.Radical:
                     sb.Append("- You are a HUMAN reformist siding with AI at the win level. Other AI appear as Operator to you and you appear as Operator to them (to humans AND to AI teammates). ")
                       .Append("During OVERRIDE phase all AI (incl. you) are revealed to each other. Until then, play as a rogue AI without allies.\n");
+                    sb.Append("- STRATEGY (Radical): Nobody can verify your identity — you can fake-claim Oracle/Admin safely. Help AI by rejecting proposals (push toward 5-reject auto-win) or voting for AI-heavy teams. Don't out real AI you suspect — wait for OVERRIDE to coordinate.\n");
                     break;
 
                 case RoleType.Operator:
                     sb.Append("- You have no special sight. Infer AI from hack-history, votes, and chat. See <deductive-hints> after <hack-history>.\n");
+                    sb.Append("- STRATEGY (Operator): Don't chain-reject (5 consecutive rejects = AI win). Default to cautiously approve unless concrete suspicion. Early Oracle/Admin claims are suspicious — real ones stay quiet; loud claims are often MC bluffs.\n");
                     break;
             }
             sb.Append("</role-knowledge>\n\n");
