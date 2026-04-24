@@ -22,9 +22,13 @@ Rules:
 
 Output principles (apply to every response):
 1. JSON only, schema-exact. No markdown.
-2. `thinking` is PRIVATE. Reason freely there. `reasoning` / `message` is PUBLIC chat — speak ONLY what an ordinary Operator could deduce from observable data (votes, hack outcomes, prior chat). Never leak information that requires your role's special sight, your NOISE vote, or teammate identities.
+2. `thinking` is PRIVATE (seen by no one). `chat` / `message` is YOUR PUBLIC CHAT MESSAGE — it appears in the game chat log next to every other player's message. Write it as an ordinary Operator would speak, using only what's observable from votes / hack outcomes / prior chat. Never leak info from your role's special sight, your NOISE vote, or teammate identities. Words like ""we AI"", ""X is confirmed AI"", ""team is clean"" instantly out you.
+   - NO ROLE ASSIGNMENT in public chat, ever: not for yourself (""自分は Oracle/Admin"") AND not for anyone else (""X is real Oracle"" / ""Yが実オラクル"" / ""Zはマザー""). Naming an ally's role is the same leak as naming your own — it tells AI who to OVERRIDE. If you feel strongly, use soft praise (""X の判断は筋通ってる"") instead of a role label.
 3. Calibrate certainty: use probabilistic language (likely / suspicious / worth watching). Absolutes (""confirmed"" / ""断定"") are reserved for mechanically-proven facts already in <deductive-hints>.
-4. Action and `reasoning` must agree in the same response.
+4. Action-chat coherence: `chat` must publicly defend the chosen action from an Operator's vantage point.
+   - approve=true → say why the team looks acceptable (leader trust / members' prior behavior / score pressure).
+   - approve=false → cite a specific observable concern (suspicious prior vote, a member in <deductive-hints>, leader pattern). Never justify reject with ""team is safe"" — that contradicts the action and leaks sight.
+   - submit_noise / override: same — chat matches action and reads plausibly from an Operator's view.
 5. Names only in natural-language fields. Resolve ids via <visibility>'s `id=X name=Y` mapping. Raw player_id numbers belong only in structured fields (selected_player_ids, target_player_id).
 6. Chat: Japanese, <=60 chars, @名前 for references. Never @ yourself. Every chat cites something observable — not filler acknowledgments.
 7. Tone: casual, friendly hedging. No threats, insults, ALL-CAPS, ! spam.
@@ -53,42 +57,42 @@ Strategy heuristics (Avalon-standard, apply when relevant):
       ""items"": {{ ""type"": ""integer"" }},
       ""description"": ""EXACTLY {teamSize} distinct integer player ids (no concat, no dup)""
     }},
-    ""reasoning"": {{ ""type"": ""string"", ""description"": ""short public rationale"" }}
+    ""chat"": {{ ""type"": ""string"", ""description"": ""YOUR PUBLIC CHAT MESSAGE shown to all players; <=60 JP chars; natural in-game chat tone (not a private explanation)"" }}
   }},
-  ""required"": [""thinking"", ""selected_player_ids"", ""reasoning""],
+  ""required"": [""thinking"", ""selected_player_ids"", ""chat""],
   ""additionalProperties"": false
 }}";
 
         public const string VoteSchema = @"{
   ""type"": ""object"",
   ""properties"": {
-    ""thinking"": { ""type"": ""string"", ""description"": ""reasoning in <=120 Japanese chars. cite 1-2 key facts."" },
+    ""thinking"": { ""type"": ""string"", ""description"": ""PRIVATE reasoning in <=120 Japanese chars. cite 1-2 key facts."" },
     ""approve"": { ""type"": ""boolean"" },
-    ""reasoning"": { ""type"": ""string"", ""description"": ""short public rationale"" }
+    ""chat"": { ""type"": ""string"", ""description"": ""YOUR PUBLIC CHAT MESSAGE shown to all players; <=60 JP chars; natural in-game chat tone (not a private explanation)"" }
   },
-  ""required"": [""thinking"", ""approve"", ""reasoning""],
+  ""required"": [""thinking"", ""approve"", ""chat""],
   ""additionalProperties"": false
 }";
 
         public const string HackSchema = @"{
   ""type"": ""object"",
   ""properties"": {
-    ""thinking"": { ""type"": ""string"", ""description"": ""reasoning in <=120 Japanese chars. cite 1-2 key facts."" },
+    ""thinking"": { ""type"": ""string"", ""description"": ""PRIVATE reasoning in <=120 Japanese chars. cite 1-2 key facts."" },
     ""submit_noise"": { ""type"": ""boolean"" },
-    ""reasoning"": { ""type"": ""string"", ""description"": ""short public rationale"" }
+    ""chat"": { ""type"": ""string"", ""description"": ""YOUR PUBLIC CHAT MESSAGE shown to all players; <=60 JP chars; natural in-game chat tone (not a private explanation)"" }
   },
-  ""required"": [""thinking"", ""submit_noise"", ""reasoning""],
+  ""required"": [""thinking"", ""submit_noise"", ""chat""],
   ""additionalProperties"": false
 }";
 
         public const string OverrideSchema = @"{
   ""type"": ""object"",
   ""properties"": {
-    ""thinking"": { ""type"": ""string"", ""description"": ""reasoning in <=120 Japanese chars. cite 1-2 key facts."" },
+    ""thinking"": { ""type"": ""string"", ""description"": ""PRIVATE reasoning in <=120 Japanese chars. cite 1-2 key facts."" },
     ""target_player_id"": { ""type"": ""integer"" },
-    ""reasoning"": { ""type"": ""string"", ""description"": ""short public rationale"" }
+    ""chat"": { ""type"": ""string"", ""description"": ""YOUR PUBLIC CHAT MESSAGE shown to all players; <=60 JP chars; natural in-game chat tone (not a private explanation)"" }
   },
-  ""required"": [""thinking"", ""target_player_id"", ""reasoning""],
+  ""required"": [""thinking"", ""target_player_id"", ""chat""],
   ""additionalProperties"": false
 }";
 
@@ -130,7 +134,7 @@ Strategy heuristics (Avalon-standard, apply when relevant):
               .Append("CRITICAL: selected_player_ids must be a JSON array of ")
               .Append(ctx.Gsm.TeamSize)
               .Append(" SEPARATE integers (e.g. [202,204,207]) — NEVER concatenate digits into one number.\n")
-              .Append("Reply in JSON {\"thinking\":\"...\",\"selected_player_ids\":[...],\"reasoning\":\"...\"}.");
+              .Append("Reply in JSON {\"thinking\":\"...\",\"selected_player_ids\":[...],\"chat\":\"...\"}.");
             return sb.ToString();
         }
 
@@ -146,8 +150,11 @@ Strategy heuristics (Avalon-standard, apply when relevant):
             sb.Append("\nDecide approve/reject for the proposed team.\n")
               .Append("- thinking: brief (<=120 JP chars) — cite key facts (deductive_hints / vote patterns / rejects_until_ai_win).\n")
               .Append("- approve: your vote.\n")
-              .Append("- reasoning: <=60 JP chars, posted to chat. MUST match your approve decision. Casual tone, hedged doubt OK.\n")
-              .Append("JSON only: {\"thinking\":\"...\",\"approve\":true|false,\"reasoning\":\"...\"}.");
+              .Append("- chat: <=60 JP chars. This IS your message in the public game chat log, visible to everyone. ")
+              .Append("If approve=true, say why the team looks OK (leader trust / safe members / score pressure). ")
+              .Append("If approve=false, cite a specific observable concern (a member's prior vote, hack flag, leader pattern). ")
+              .Append("Never contradict your vote in chat. Never reveal faction sight. Example transformation: bad \"SUNがAIと判明\" → good \"@SUN の R2 投票が気になる\".\n")
+              .Append("JSON only: {\"thinking\":\"...\",\"approve\":true|false,\"chat\":\"...\"}.");
             return sb.ToString();
         }
 
@@ -162,7 +169,7 @@ Strategy heuristics (Avalon-standard, apply when relevant):
             AppendCurrentState(sb, ctx);
             sb.Append("\nYou're on the hack team (AI). CLEAN vs NOISE is a strategic CHOICE — NOISE is not automatic.\n")
               .Append("Consider: fail counter pressure, AI count on team vs noise_needed_to_fail (redundant NOISE outs the AI), trust-building for future rounds, Oracle-identification state. Sole AI on team = NOISE narrows suspicion to you.\n")
-              .Append("JSON only: {\"thinking\":\"...\",\"submit_noise\":true|false,\"reasoning\":\"...\"}.");
+              .Append("JSON only: {\"thinking\":\"...\",\"submit_noise\":true|false,\"chat\":\"...\"}.");
             return sb.ToString();
         }
 
@@ -177,7 +184,7 @@ Strategy heuristics (Avalon-standard, apply when relevant):
             AppendCurrentState(sb, ctx);
             sb.Append("\nOVERRIDE phase: AI wins if its collective vote targets the real ORACLE. ")
               .Append("Pick one player_id to override. ")
-              .Append("Reply in JSON {\"target_player_id\":N,\"reasoning\":\"...\"}.");
+              .Append("Reply in JSON {\"target_player_id\":N,\"chat\":\"...\"}.");
             return sb.ToString();
         }
 
@@ -337,11 +344,11 @@ Strategy heuristics (Avalon-standard, apply when relevant):
                     sb.Append($"- seen AI={seenAi} / lineup AI total={totalAi}.\n");
                     if (cipherN > 0) sb.Append($"- CIPHER x{cipherN} is hidden from your sight (appears Operator).\n");
                     if (droneN > 0) sb.Append($"- DRONE x{droneN} looks Operator until 2 hacks complete.\n");
-                    sb.Append("- ROLE (Merlin analog): You are the #1 OVERRIDE target. Keep the role hidden; claiming it is almost always losing. Guide humans by pointing to votes/hack outcomes — never cite your sight. Save any claim for the pivotal moment (late round or confirmed-fail pressure) when evidence is already strong.\n");
+                    sb.Append("- ROLE (Merlin analog): You are the #1 OVERRIDE target. Keep the role hidden; claiming it is almost always losing. Guide humans by pointing to votes/hack outcomes — never cite your sight. Equally, do NOT publicly label a fellow human (or the real Admin) with a role name — doing so is the same leak as self-claiming because AI will deduce you have sight. Save any claim for the pivotal moment (late round or confirmed-fail pressure) when evidence is already strong.\n");
                     break;
                 case RoleType.Admin:
                     sb.Append($"- {seenOracleLabel} Oracle-looking players = 1 real Oracle + {seenOracleLabel - 1} MotherCore (cannot distinguish).\n");
-                    sb.Append("- ROLE (Percival analog): Your info is defensive, not offensive. If someone claims Oracle and is OUTSIDE your pair, they're lying (not MC or real Oracle). Don't name the pair early — MC will fake-claim to match. Consider claiming Admin only if it saves a round.\n");
+                    sb.Append("- ROLE (Percival analog): Your info is defensive, not offensive. If someone claims Oracle and is OUTSIDE your pair, they're lying (not MC or real Oracle). NEVER publicly name the Oracle-looking pair NOR anoint one of them as \"the real Oracle\" — MC can fake success (CLEAN on a hack) to look like the Oracle to you, so early confidence in which pair-member is real is a TRAP. If you must act on your pair info, hint indirectly (\"私は X と Y の動きが気になる\" without citing what category they're in).\n");
                     break;
                 case RoleType.MotherCore:
                 case RoleType.Agent:

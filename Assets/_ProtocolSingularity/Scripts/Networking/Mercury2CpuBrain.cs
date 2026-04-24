@@ -77,7 +77,8 @@ namespace ProtocolSingularity.Networking
 
             bool approve = ExtractBool(json, "approve") ?? _fallback.ChooseVote(ctx);
             // 同一 LLM 呼び出し内の reasoning をそのまま公開発言として流す → 行動と発言が必ず一致
-            string rationale = ExtractString(json, "reasoning");
+            // schema field: "chat" (legacy fallback: "reasoning" for older LLM output format)
+            string rationale = ExtractString(json, "chat") ?? ExtractString(json, "reasoning");
             if (!string.IsNullOrEmpty(rationale) && rationale.Length > 60)
                 rationale = rationale.Substring(0, 60);
             return new VoteChoice(approve, rationale);

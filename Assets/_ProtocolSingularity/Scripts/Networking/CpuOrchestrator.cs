@@ -481,7 +481,8 @@ namespace ProtocolSingularity.Networking
         {
             if (!HasStateAuthority || gsm == null) return;
             var keyRoles = new[] { RoleType.Oracle, RoleType.Admin, RoleType.MotherCore };
-            var parts = new List<string>();
+            var chat = ChatManager.Instance;
+            if (chat == null) return;
             for (int i = 0; i < gsm.LeaderOrderCount; i++)
             {
                 var p = gsm.LeaderOrder[i];
@@ -498,14 +499,10 @@ namespace ProtocolSingularity.Networking
                 if (string.IsNullOrEmpty(json)) continue;
                 var comment = Mercury2CpuBrain.ExtractString(json, "comment");
                 if (string.IsNullOrEmpty(comment)) continue;
-                if (comment.Length > 80) comment = comment.Substring(0, 80);
-                // 区切り文字を comment から除去 (保険)
-                comment = comment.Replace('|', ' ').Replace(':', ' ');
-                parts.Add($"{(int)role}:{p.PlayerId}:{comment}");
+                if (comment.Length > 60) comment = comment.Substring(0, 60);
+                // 既存のチャット経路で流す (コメント欄に表示される)
+                chat.Rpc_SendThought(p, comment);
             }
-            if (parts.Count == 0) return;
-            if (gsm == null) return;
-            gsm.PostMatchComments = string.Join("|", parts);
         }
 
         // ==========================================================
