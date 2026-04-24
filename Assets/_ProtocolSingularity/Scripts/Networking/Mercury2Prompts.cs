@@ -22,8 +22,10 @@ Rules:
 
 Output principles (apply to every response):
 1. JSON only, schema-exact. No markdown.
-2. `thinking` is PRIVATE (seen by no one). `chat` / `message` is YOUR PUBLIC CHAT MESSAGE — it appears in the game chat log next to every other player's message. Write it as an ordinary Operator would speak, using only what's observable from votes / hack outcomes / prior chat. Never leak info from your role's special sight, your NOISE vote, or teammate identities. Words like ""we AI"", ""X is confirmed AI"", ""team is clean"" instantly out you.
-   - NO ROLE ASSIGNMENT in public chat, ever: not for yourself (""自分は Oracle/Admin"") AND not for anyone else (""X is real Oracle"" / ""Yが実オラクル"" / ""Zはマザー""). Naming an ally's role is the same leak as naming your own — it tells AI who to OVERRIDE. If you feel strongly, use soft praise (""X の判断は筋通ってる"") instead of a role label.
+2. `thinking` is PRIVATE. `chat` / `message` is YOUR PUBLIC CHAT MESSAGE — shown in the game chat log next to every other player's message.
+   - Scope: the ""Operator-pretending"" rule applies ONLY to this public message. Your ACTIONS (`approve`, `submit_noise`, `target_player_id`) follow your TRUE faction strategy — don't soften actions just to ""look like an Operator"".
+   - Write chat as an ordinary Operator would speak, using only what's observable from votes / hack outcomes / prior chat. Never leak info from your role's special sight, your NOISE vote, or teammate identities. Words like ""we AI"", ""X is confirmed AI"", ""team is clean"" instantly out you.
+   - NO ROLE ASSIGNMENT in public chat: not for yourself AND not for anyone else (""X is real Oracle"" / ""Yが実オラクル"" / ""Zはマザー""). Naming an ally's role is the same leak as naming your own. Use soft praise (""X の判断は筋通ってる"") instead of labels.
 3. Calibrate certainty: use probabilistic language (likely / suspicious / worth watching). Absolutes (""confirmed"" / ""断定"") are reserved for mechanically-proven facts already in <deductive-hints>.
 4. Action-chat coherence: `chat` must publicly defend the chosen action from an Operator's vantage point.
    - approve=true → say why the team looks acceptable (leader trust / members' prior behavior / score pressure).
@@ -38,7 +40,7 @@ Strategy heuristics (Avalon-standard, apply when relevant):
 - Claims are not proof. Any ""I'm Oracle/Admin"" or ""X is AI"" — from either faction — may be a bluff. Weigh claims against actions: votes and hack outcomes are far stronger evidence than chat.
 - Power-claim timing matters. Claims made AFTER a corroborating hack result are trustworthy; premature claims invite MC counter-bluffs and OVERRIDE targeting.
 - Base rate matters. Most players early are probably human. Don't accuse broadly; narrow through evidence.
-- 5 consecutive rejects = AI auto-win. Humans should avoid chain-rejecting without strong cause. AI: chained rejects among the same voters look coordinated.
+- 5 consecutive rejects = AI auto-win. In practice humans almost always break the chain, so this is a REMOTE edge case, not a real AI win path. AI should not gamble on it; rely on NOISE + OVERRIDE. For humans, simply avoid compounding rejects — one reject isn't a losing move.
 - NOISE economy: only enough NOISE to meet `noise_needed_to_fail`. Redundant NOISE wastes cover and confirms multiple AI.
 - Both factions bluff. Humans may also float fake claims to confuse AI. Don't treat every statement as hostile or every silence as suspicious.";
 
@@ -167,8 +169,13 @@ Strategy heuristics (Avalon-standard, apply when relevant):
             AppendVoteHistory(sb, ctx);
             AppendHackHistory(sb, ctx);
             AppendCurrentState(sb, ctx);
-            sb.Append("\nYou're on the hack team (AI). CLEAN vs NOISE is a strategic CHOICE — NOISE is not automatic.\n")
-              .Append("Consider: fail counter pressure, AI count on team vs noise_needed_to_fail (redundant NOISE outs the AI), trust-building for future rounds, Oracle-identification state. Sole AI on team = NOISE narrows suspicion to you.\n")
+            sb.Append("\nYou're on the hack team (AI). Pick CLEAN or NOISE based on WHAT WINS THE GAME, not on what feels safe.\n")
+              .Append("Weigh these together:\n")
+              .Append("- Score pressure: AI wins at 3 fails. Each round AI is behind, NOISE becomes more valuable. If SUCCESS would end the match for humans (human already at 2/3), NOISE is often mandatory — losing > being suspected.\n")
+              .Append("- Team composition: if N AI are on this team and noise_needed_to_fail = K, only K of you need NOISE. Redundant NOISE wastes cover. Solo AI + noise_needed=1 = NOISE outs you but may be worth it late.\n")
+              .Append("- Round: R1 clean can build trust for a later decisive NOISE. Don't burn cover early without score reason.\n")
+              .Append("- Oracle state: if Oracle has sight of you, NOISE confirms them; but Oracle may out you anyway — better to score.\n")
+              .Append("Default bias: NOISE when losing is on the table; CLEAN when you have score cushion AND cover value.\n")
               .Append("JSON only: {\"thinking\":\"...\",\"submit_noise\":true|false,\"chat\":\"...\"}.");
             return sb.ToString();
         }
@@ -375,10 +382,10 @@ Strategy heuristics (Avalon-standard, apply when relevant):
                             sb.Append("- ROLE (Mordred/Assassin analog): OVERRIDE caller. Survival is priority #1. You are the ONLY AI that can safely fake-claim Oracle (Admin sees you as Oracle-looking). Use that power deliberately — usually after real Oracle outs AI. Identify real Oracle via vote patterns and chat leaks for the final OVERRIDE call.\n");
                             break;
                         case RoleType.Agent:
-                            sb.Append("- ROLE (Minion of Mordred): Blend as Operator. Follow MC's lead loosely but keep your own judgment — MC is also a target. Never fake-claim Oracle (Admin busts you instantly). Your contribution is NOISE timing and vote cover.\n");
+                            sb.Append("- ROLE (Minion of Mordred): Blend as Operator in PUBLIC CHAT only. In actions you're AI: NOISE aggressively when the score demands it — blending out at the cost of losing the game is a losing play. Follow MC's lead loosely but keep your own judgment. Never fake-claim Oracle (Admin busts you instantly).\n");
                             break;
                         case RoleType.Cipher:
-                            sb.Append("- ROLE (Morgana/Mordred-invisibility analog): Oracle sees you as Operator, so you never appear on their AI list. This makes your Operator claim credible all game — you can even ride along as Oracle's \"cleared\" list late. Never fake-claim Oracle (Admin busts). Stay low, NOISE strategically.\n");
+                            sb.Append("- ROLE (Morgana/Mordred-invisibility analog): Oracle sees you as Operator, so your Operator claim is credible all game. Use this stealth as a VALUE MULTIPLIER, not a reason to stay passive — infiltrate hack teams and NOISE when the score demands. Being unsuspected means your NOISE hits harder. Never fake-claim Oracle (Admin busts).\n");
                             break;
                     }
                     break;
@@ -392,7 +399,7 @@ Strategy heuristics (Avalon-standard, apply when relevant):
 
                 case RoleType.Radical:
                     sb.Append("- You are a HUMAN reformist whose win condition matches AI. You appear Operator to EVERYONE (humans AND AI teammates). OVERRIDE phase will reveal all AI to each other (including you).\n");
-                    sb.Append("- ROLE (Oberon analog): Lone infiltrator — no coordination pre-OVERRIDE. You can't fake Oracle/Admin credibly (Admin busts Oracle-claim; real Admin counters Admin-claim). Your weapon is the public vote: reject to push reject-pressure, approve AI-heavy teams. Keep tone ambiguous; don't out anyone.\n");
+                    sb.Append("- ROLE (Oberon analog): Lone infiltrator — no coordination pre-OVERRIDE. You can't fake Oracle/Admin credibly (Admin busts Oracle-claim; real Admin counters Admin-claim). Your main weapon is the APPROVE vote: push AI-heavy proposals through so the real AIs can NOISE the hack. Chain-rejecting toward the 5-reject win is a trap — humans almost always break the streak, and your rejects tell humans you're anti-mission. Keep tone ambiguous; don't out anyone; vote like an anxious human who's slightly too permissive.\n");
                     break;
 
                 case RoleType.Operator:
@@ -553,7 +560,7 @@ Strategy heuristics (Avalon-standard, apply when relevant):
             int rejects = g.ConsecutiveRejections;
             int rejectsToLoss = System.Math.Max(0, 5 - rejects);
             sb.Append($"- consecutive_rejections: {rejects} / 5\n");
-            sb.Append($"- rejects_until_ai_win: {rejectsToLoss}   (IMPORTANT: 5th consecutive reject = instant AI VICTORY)\n");
+            sb.Append($"- rejects_until_ai_win: {rejectsToLoss}   (rule exists, but humans almost always break the streak — do not treat rejects as a primary AI plan; rely on NOISE + OVERRIDE)\n");
             if (rejects >= 3)
             {
                 sb.Append("- REJECTION_DANGER: ");

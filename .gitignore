@@ -96,6 +96,35 @@ dr*.json
 deploy-run.json
 secrets.json
 
+# ============================================================
+# ローカル開発の成果物 (絶対にコミットしない)
+# ============================================================
+# Unity のローカルビルド出力
+/.build/
+# ビルド等で生成されるログ/中間データ (リポに入れない)
+/Data/
+
+# ============================================================
+# 空 or コンテンツ未committed のフォルダに付く .meta
+# ----
+# Unity は通常 .meta をコミットすべきだが、これらは実体が追跡されてないので
+# 誤ってコミットしないよう ignore。使い始めたら `git add -f <path>` で明示追加。
+# ============================================================
+/Assets/Plugins.meta
+/Assets/Resources.meta
+/Assets/Sprites.meta
+/Assets/WebGLTemplates.meta
+/Assets/_ProtocolSingularity/Audios.meta
+/Assets/_ProtocolSingularity/Resources/Audio.meta
+/Assets/_ProtocolSingularity/Scripts/Audio.meta
+# Fonts フォルダの folder .meta / ライセンス.meta (中身の .ttf / .txt は tracked)
+/Assets/Fonts.meta
+/Assets/Fonts/Noto_Sans_JP.meta
+/Assets/Fonts/Noto_Sans_JP/OFL.txt.meta
+/Assets/Fonts/Noto_Sans_JP/README.txt.meta
+/Assets/Fonts/Noto_Sans_JP/static.meta
+/Assets/Fonts/Noto_Sans_JP/static/NotoSansJP-Regular.ttf.meta
+
 # Noto Sans JP の未使用 variant (Regular 以外は build 対象外なのでリポに入れない)
 /Assets/Fonts/Noto_Sans_JP/NotoSansJP-VariableFont_wght.ttf
 /Assets/Fonts/Noto_Sans_JP/NotoSansJP-VariableFont_wght.ttf.meta
