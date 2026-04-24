@@ -907,9 +907,9 @@ namespace ProtocolSingularity.UI
         private static BgmPhase SelectBgm(GameStateManager gsm, GamePhase phase)
         {
             if (phase == GamePhase.Lobby || phase == GamePhase.Title) return BgmPhase.Lobby;
-            // OVERRIDE: Final 楽曲未実装のため Last 流用
+            // OVERRIDE フェーズは Final の OVERRIDE 曲を流す
             if (phase == GamePhase.OverrideDiscussion || phase == GamePhase.OverrideVote || phase == GamePhase.OverrideResult)
-                return BgmPhase.Last;
+                return BgmPhase.Final;
             // AI 失敗 (= 人類ハック成功) ではなく、AI が 2 点 = ハック失敗 2 回で Last 系に切替
             if (gsm.FailureCount >= 2) return BgmPhase.Last;
             // R3 以降 (= R2 終了後) は 2nd

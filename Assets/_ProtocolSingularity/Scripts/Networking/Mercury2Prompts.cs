@@ -341,7 +341,7 @@ Strategy heuristics (Avalon-standard, apply when relevant):
                             sb.Append("- ROLE (Minion of Mordred): Blend as Operator. Follow MC's lead loosely but keep your own judgment — MC is also a target. Never fake-claim Oracle (Admin busts you instantly). Your contribution is NOISE timing and vote cover.\n");
                             break;
                         case RoleType.Cipher:
-                            sb.Append("- ROLE (Morgana/Mordred-invisibility analog): Oracle sees you as Operator, so you never appear on their AI list. This makes your Operator claim credible all game — you can even ride along as Oracle's ""cleared"" list late. Never fake-claim Oracle (Admin busts). Stay low, NOISE strategically.\n");
+                            sb.Append("- ROLE (Morgana/Mordred-invisibility analog): Oracle sees you as Operator, so you never appear on their AI list. This makes your Operator claim credible all game — you can even ride along as Oracle's \"cleared\" list late. Never fake-claim Oracle (Admin busts). Stay low, NOISE strategically.\n");
                             break;
                     }
                     break;
@@ -360,7 +360,7 @@ Strategy heuristics (Avalon-standard, apply when relevant):
 
                 case RoleType.Operator:
                     sb.Append("- No special sight. Your evidence: <hack-history>, <vote-history>, <deductive-hints>, chat patterns.\n");
-                    sb.Append("- ROLE (Loyal Servant): Actions > chat. Approve unless you have concrete suspicion — chain-rejecting loses the game. Treat every power-claim (""I'm Oracle/Admin"", ""X is AI"") as a hypothesis, not a fact: could be MC bluffing, or a confused human. Corroborate with vote/hack evidence before acting on it.\n");
+                    sb.Append("- ROLE (Loyal Servant): Actions > chat. Approve unless you have concrete suspicion — chain-rejecting loses the game. Treat every power-claim (\"I'm Oracle/Admin\", \"X is AI\") as a hypothesis, not a fact: could be MC bluffing, or a confused human. Corroborate with vote/hack evidence before acting on it.\n");
                     break;
             }
             sb.Append("</role-knowledge>\n\n");
