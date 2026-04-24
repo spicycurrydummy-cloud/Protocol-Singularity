@@ -19,6 +19,9 @@ jobs:
   build:
     name: Build WebGL
     runs-on: ubuntu-latest
+    # IL2CPP WebGL は Library キャッシュ無効時に 60 分以上かかることがある。
+    # game-ci デフォルトは短いので明示的に拡張する。
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -105,3 +108,7 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # デフォルト 10 分だと Pages 側が混んでたときタイムアウトする。20 分まで延ばす。
+          timeout: 1200000
+          error_count: 10
