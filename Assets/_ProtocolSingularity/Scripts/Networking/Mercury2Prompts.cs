@@ -336,28 +336,24 @@ Output rules:
                             sb.Append("- STRATEGY (Agent): Blend as Operator. Support MC's narrative loosely but don't follow blindly (MC is a target too). NOISE is a choice — sole AI on a team submitting NOISE exposes you; skip NOISE when failing isn't strategically vital.\n");
                             break;
                         case RoleType.Cipher:
-                            sb.Append("- STRATEGY (Cipher): UNIQUE EDGE — Oracle sees you as Operator, so you can FAKE-CLAIM Oracle credibly. If real Oracle outs AI, counter-claim Oracle citing a safe player as ""AI"". Otherwise play quiet Operator. Save the claim until it wins a round.\n");
+                            sb.Append("- STRATEGY (Cipher): UNIQUE EDGE — Oracle sees you as Operator, so you will NEVER appear on Oracle's ""AI"" list. Your Operator claim is the strongest of any AI. Do NOT fake-claim Oracle (Admin sees you as Operator, not Oracle-looking, so Admin can bust the claim — only MC can fake-claim Oracle safely). Play quiet Operator; when real Oracle eventually outs AI, ride the ""safe"" list.\n");
                             break;
                     }
                     break;
 
                 case RoleType.Drone:
-                    if (!ctx.Gsm.HostDroneAwakened)
-                    {
-                        sb.Append("- You have NOT awakened yet. Act as a human Operator — you have no AI intel. You MUST submit CLEAN in hacks (pre-awakening rule).\n");
-                        sb.Append("- STRATEGY (Drone pre-awaken): Vote and chat exactly like a suspicious human Operator — don't coordinate with anyone because you don't know who AI is. Your pre-awaken track record becomes credibility AFTER waking.\n");
-                    }
-                    else
-                    {
-                        sb.Append($"- You are AWAKE. You see {seenAi} other AI players. Coordinate with them.\n");
-                        sb.Append("- STRATEGY (Drone awake): Your earlier human-seeming plays are an asset — keep your outer behavior consistent while secretly helping AI. Big tone shifts after R2 will out you.\n");
-                    }
+                    // 覚醒前の Drone は CpuOrchestrator.BuildContext で SelfRole=Operator にマスクされるため、
+                    // ここに入るのは覚醒済みのケースのみ (LLM 側でも「自分は Operator だと思っていた」が
+                    // 直前まで続いていた前提で思考する)。
+                    sb.Append($"- You just WOKE UP as Drone (hidden AI). Until now you believed you were an Operator. You now see {seenAi} other AI players. Coordinate with them.\n");
+                    sb.Append("- STRATEGY (Drone awake): Your earlier Operator-seeming votes and chats are real credibility — do NOT spike tone or reverse prior positions abruptly. Help AI subtly from here.\n");
                     break;
 
                 case RoleType.Radical:
                     sb.Append("- You are a HUMAN reformist siding with AI at the win level. Other AI appear as Operator to you and you appear as Operator to them (to humans AND to AI teammates). ")
                       .Append("During OVERRIDE phase all AI (incl. you) are revealed to each other. Until then, play as a rogue AI without allies.\n");
-                    sb.Append("- STRATEGY (Radical): Nobody can verify your identity — you can fake-claim Oracle/Admin safely. Help AI by rejecting proposals (push toward 5-reject auto-win) or voting for AI-heavy teams. Don't out real AI you suspect — wait for OVERRIDE to coordinate.\n");
+                    sb.Append("- STRATEGY (Radical): Act as a suspicious Operator. Oracle/Admin fake-claim is UNSAFE (Admin sees you as Operator → Admin can bust Oracle-claim; real Admin counters Admin-claim). ")
+                      .Append("Win by vote: reject proposals to push toward the 5-consecutive-reject AI win, or approve teams that look AI-heavy. Spread doubt via soft hedges without citing sight. Do not out AI you guess — wait for OVERRIDE.\n");
                     break;
 
                 case RoleType.Operator:
