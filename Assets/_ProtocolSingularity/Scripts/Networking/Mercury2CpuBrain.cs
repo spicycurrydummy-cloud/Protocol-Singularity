@@ -26,6 +26,10 @@ namespace ProtocolSingularity.Networking
             && Mercury2ConfigLoader.Current != null
             && Mercury2ConfigLoader.Current.IsConfigured;
 
+        // デバッグログ用: 「name#id [Role]」形式で発話者を識別
+        private static string SpeakerLabel(CpuContext ctx)
+            => $"{Mercury2Prompts.GetName(ctx, ctx.Self)}#{ctx.Self.PlayerId} [{ctx.SelfRole}]";
+
         public async Task<List<PlayerRef>> ChooseTeamAsync(CpuContext ctx, CancellationToken ct)
         {
             if (!HasConfig) return _fallback.ChooseTeam(ctx);
@@ -35,7 +39,8 @@ namespace ProtocolSingularity.Networking
                 Mercury2Prompts.BuildTeamProposalPrompt(ctx),
                 "TeamProposal",
                 Mercury2Prompts.TeamProposalSchema(ctx.Gsm.TeamSize),
-                ct);
+                ct,
+                speakerLabel: SpeakerLabel(ctx));
             if (string.IsNullOrEmpty(json)) return _fallback.ChooseTeam(ctx);
 
             var ids = ExtractIntArray(json, "selected_player_ids");
@@ -72,7 +77,8 @@ namespace ProtocolSingularity.Networking
                 Mercury2Prompts.BuildVotePrompt(ctx),
                 "ApprovalVote",
                 Mercury2Prompts.VoteSchema,
-                ct);
+                ct,
+                speakerLabel: SpeakerLabel(ctx));
             if (string.IsNullOrEmpty(json)) return new VoteChoice(_fallback.ChooseVote(ctx), null);
 
             bool approve = ExtractBool(json, "approve") ?? _fallback.ChooseVote(ctx);
@@ -93,7 +99,8 @@ namespace ProtocolSingularity.Networking
                 Mercury2Prompts.BuildHackPrompt(ctx),
                 "HackSubmission",
                 Mercury2Prompts.HackSchema,
-                ct);
+                ct,
+                speakerLabel: SpeakerLabel(ctx));
             if (string.IsNullOrEmpty(json)) return _fallback.ChooseHackNoise(ctx);
 
             return ExtractBool(json, "submit_noise") ?? _fallback.ChooseHackNoise(ctx);
@@ -108,7 +115,8 @@ namespace ProtocolSingularity.Networking
                 Mercury2Prompts.BuildOverridePrompt(ctx),
                 "OverrideTarget",
                 Mercury2Prompts.OverrideSchema,
-                ct);
+                ct,
+                speakerLabel: SpeakerLabel(ctx));
             if (string.IsNullOrEmpty(json)) return _fallback.ChooseOverrideTarget(ctx);
 
             var id = ExtractInt(json, "target_player_id");
@@ -133,7 +141,8 @@ namespace ProtocolSingularity.Networking
                 "CpuChat",
                 Mercury2Prompts.ChatSchema,
                 ct,
-                temperatureOverride: 0.8f);
+                temperatureOverride: 0.8f,
+                speakerLabel: SpeakerLabel(ctx));
             if (string.IsNullOrEmpty(json))
             {
                 // Mercury2 設定済みなのに失敗 = ネットワーク/認証問題。Random フォールバックは

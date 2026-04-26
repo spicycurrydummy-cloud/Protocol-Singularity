@@ -16,7 +16,7 @@ namespace ProtocolSingularity.Networking
 @"You are a PLAYER in ""Protocol Singularity"" (Avalon-style hidden-role, Humans vs AI). Use only in-game facts from the provided sections.
 
 Rules:
-- Each round: leader proposes a hack team → all vote Approve/Reject → team secretly submits CLEAN or NOISE. Humans forced CLEAN; AI and awakened DRONE choose freely. Hack FAILS when NOISE >= noise_needed_to_fail.
+- Each round: a proposer (chat term: ""提案者"", never ""リーダー"") proposes a hack team → all vote Approve/Reject → team secretly submits CLEAN or NOISE. Humans forced CLEAN; AI and awakened DRONE choose freely. Hack FAILS when NOISE >= noise_needed_to_fail.
 - Win: 3 hack SUCCESS + OVERRIDE misses Oracle → Humans. 3 FAILS or 5 consecutive Rejects or OVERRIDE hits Oracle → AI.
 - Visibility: ORACLE sees humans/AI by faction (Cipher hides as Operator). ADMIN sees Oracle+MotherCore both as ""Oracle-looking"". AI teammates see each other (pre-awaken Drone + Radical look Operator). DRONE sees self as Operator until 2 hacks complete. RADICAL = human aligned with AI win, invisible to all AI until OVERRIDE.
 
@@ -24,12 +24,14 @@ Output principles (apply to every response):
 1. JSON only, schema-exact. No markdown.
 2. `thinking` is PRIVATE. `chat` / `message` is YOUR PUBLIC CHAT MESSAGE — shown in the game chat log next to every other player's message.
    - Scope: the ""Operator-pretending"" rule applies ONLY to this public message. Your ACTIONS (`approve`, `submit_noise`, `target_player_id`) follow your TRUE faction strategy — don't soften actions just to ""look like an Operator"".
-   - Write chat as an ordinary Operator would speak, using only what's observable from votes / hack outcomes / prior chat. Never leak info from your role's special sight, your NOISE vote, or teammate identities. Words like ""we AI"", ""X is confirmed AI"", ""team is clean"" instantly out you.
+   - Write chat as an ordinary Operator would speak, using only what's observable from votes / hack outcomes / prior chat. Never leak info from your role's special sight, your NOISE vote, or teammate identities.
+   - AI FACTION: you MUST NOT reveal you are AI. The word ""AI"" in chat is almost always a self-out — phrases like ""AIが○名"", ""AI不在"", ""AI2名"", ""我々AI"", ""AIと判明"", ""クリーン確定"", ""失敗が確実"", ""成功が確実"" all expose faction knowledge no Operator can have. If you must voice suspicion, say ""誰か怪しい人が混ざってるかも"" / ""このチーム少し不安"" — vague risk, never a count or certainty.
    - NO ROLE ASSIGNMENT in public chat: not for yourself AND not for anyone else (""X is real Oracle"" / ""Yが実オラクル"" / ""Zはマザー""). Naming an ally's role is the same leak as naming your own. Use soft praise (""X の判断は筋通ってる"") instead of labels.
 3. Calibrate certainty: use probabilistic language (likely / suspicious / worth watching). Absolutes (""confirmed"" / ""断定"") are reserved for mechanically-proven facts already in <deductive-hints>.
 4. Action-chat coherence: `chat` must publicly defend the chosen action from an Operator's vantage point.
-   - approve=true → say why the team looks acceptable (leader trust / members' prior behavior / score pressure).
-   - approve=false → cite a specific observable concern (suspicious prior vote, a member in <deductive-hints>, leader pattern). Never justify reject with ""team is safe"" — that contradicts the action and leaks sight.
+   - approve=true → say why the team looks acceptable (proposer trust / members' prior behavior / score pressure).
+   - approve=false → frame it as ""誰か AI が混ざってる気がする"" — vague suspicion suggesting hidden AI presence on the team. Cite an observable trigger if possible (a member's prior vote, proposer pattern). NEVER reveal you KNOW the AI count (""AI 2 人が乗ってる"", ""AI不在"") — those phrasings flip from suspicion to certainty and out you.
+   - If you (AI) want a clean team to fail by reject, you cannot say ""no AI here"" — that's contradictory. Either pick a different excuse (""このメンバー少し気になる"" / ""この提案者の組み方が早すぎ"") or just approve and rely on later NOISE.
    - submit_noise / override: same — chat matches action and reads plausibly from an Operator's view.
 5. Names only in natural-language fields. Resolve ids via <visibility>'s `id=X name=Y` mapping. Raw player_id numbers belong only in structured fields (selected_player_ids, target_player_id).
 6. Chat: Japanese, <=60 chars, @名前 for references. Never @ yourself. Every chat cites something observable — not filler acknowledgments.
@@ -130,12 +132,14 @@ Strategy heuristics (Avalon-standard, apply when relevant):
             AppendVoteHistory(sb, ctx);
             AppendHackHistory(sb, ctx);
             AppendCurrentState(sb, ctx);
-            sb.Append("\nYou are the Leader this round. Pick EXACTLY ")
+            sb.Append("\nYou are the team Proposer this round (referred to in JP chat as \"提案者\", NEVER \"リーダー\"). Pick EXACTLY ")
               .Append(ctx.Gsm.TeamSize)
               .Append(" DISTINCT player ids (include yourself if tactically useful).\n")
               .Append("CRITICAL: selected_player_ids must be a JSON array of ")
               .Append(ctx.Gsm.TeamSize)
               .Append(" SEPARATE integers (e.g. [202,204,207]) — NEVER concatenate digits into one number.\n")
+              .Append("- chat: <=60 JP chars, public message explaining your pick from an Operator's view. ")
+              .Append("MUST NOT reference AI counts (\"AIが○名\", \"AI不在\") or certainty (\"クリーン確定\"). Use vague rationale (\"信頼してる人で組んだ\", \"気になる人を一緒に入れた\").\n")
               .Append("Reply in JSON {\"thinking\":\"...\",\"selected_player_ids\":[...],\"chat\":\"...\"}.");
             return sb.ToString();
         }
@@ -153,9 +157,10 @@ Strategy heuristics (Avalon-standard, apply when relevant):
               .Append("- thinking: brief (<=120 JP chars) — cite key facts (deductive_hints / vote patterns / rejects_until_ai_win).\n")
               .Append("- approve: your vote.\n")
               .Append("- chat: <=60 JP chars. This IS your message in the public game chat log, visible to everyone. ")
-              .Append("If approve=true, say why the team looks OK (leader trust / safe members / score pressure). ")
-              .Append("If approve=false, cite a specific observable concern (a member's prior vote, hack flag, leader pattern). ")
-              .Append("Never contradict your vote in chat. Never reveal faction sight. Example transformation: bad \"SUNがAIと判明\" → good \"@SUN の R2 投票が気になる\".\n")
+              .Append("If approve=true, say why the team looks OK (proposer trust / safe members / score pressure). ")
+              .Append("If approve=false, cite a specific observable concern (a member's prior vote, hack flag, proposer pattern). ")
+              .Append("Never contradict your vote in chat. Never reveal faction sight. ")
+              .Append("CRITICAL: chat MUST NOT contain numeric AI references (\"AIが○名\", \"AI不在\", \"AI2名\", \"AI複数\") nor certainty terms (\"成功が確実\", \"失敗が確実\", \"クリーン確定\"). Only an AI/Oracle could compute those. Use vague forms (\"このチーム少し不安\", \"誰か怪しいかも\"). Example: bad \"AI2名で失敗が確実\" → good \"このチームちょっと心配\".\n")
               .Append("JSON only: {\"thinking\":\"...\",\"approve\":true|false,\"chat\":\"...\"}.");
             return sb.ToString();
         }
@@ -206,10 +211,21 @@ Strategy heuristics (Avalon-standard, apply when relevant):
             AppendVoteHistory(sb, ctx);
             AppendHackHistory(sb, ctx);
             AppendCurrentState(sb, ctx);
+
+            // 勝敗状況を明示してコメントの方向性を決める
+            var winner = ctx.Gsm.LastWinner;
+            bool selfIsAi = ctx.SelfRole.IsAI();
+            bool youWon = (winner == Faction.AI && selfIsAi) || (winner == Faction.Human && !selfIsAi);
+            sb.Append("\n<match-outcome>\n")
+              .Append($"- winner: {winner} faction\n")
+              .Append($"- your faction: {(selfIsAi ? "AI" : "Human")}\n")
+              .Append($"- your result: {(youWon ? "WON" : "LOST")}\n")
+              .Append("</match-outcome>\n");
+
             sb.Append("\nGame is OVER. Give a short, in-character post-match comment from your role's perspective (1 line).\n")
-              .Append("- Reflect on a turning point you experienced (hack result, a vote you made, an OVERRIDE call).\n")
+              .Append("- Tone matches your result: ").Append(youWon ? "satisfied / pleased without smug." : "regretful / sportsmanlike acceptance.").Append('\n')
+              .Append("- Reflect on a specific turning point (hack result, a vote, OVERRIDE call) without exposing other players' roles.\n")
               .Append("- Stay in your speech_style. Casual game-recap tone — like chatting after a board game session.\n")
-              .Append("- Don't expose other players' roles or re-accuse. Assume the match is fully resolved.\n")
               .Append("- <=60 Japanese chars. No | or : characters.\n")
               .Append("JSON only: {\"thinking\":\"...\",\"comment\":\"...\"}.");
             return sb.ToString();
@@ -231,7 +247,7 @@ Strategy heuristics (Avalon-standard, apply when relevant):
 
             var myName = GetName(ctx, ctx.Self);
             sb.Append($"One chat line (<=60 JP chars) reacting to above. You are {myName}; first-person, never @{myName} or third-person-self.\n")
-              .Append("Must cite a concrete thing (@player, leader, vote, hack result, prior chat). Vary phrasing (question/doubt/agree/assert); match personality.\n")
+              .Append("Must cite a concrete thing (@player, proposer, vote, hack result, prior chat). Vary phrasing (question/doubt/agree/assert); match personality.\n")
               .Append("Casual table tone — hedged (\"〜気になる\" / \"〜じゃない？\"), no threats/insults/断罪口調/過剰 !.\n")
               .Append("No fillers (静観/様子見/了解/慎重に). Don't reuse your last [YOU] shape.\n")
               .Append("JSON only: {\"thinking\":\"...\",\"message\":\"...\"}.");
@@ -243,7 +259,7 @@ Strategy heuristics (Avalon-standard, apply when relevant):
         {
             var g = ctx.Gsm;
             var sb = new StringBuilder(256);
-            sb.Append($"phase={g.Phase} round={g.Round} leader={GetName(ctx, g.CurrentLeader)} ");
+            sb.Append($"phase={g.Phase} round={g.Round} proposer={GetName(ctx, g.CurrentLeader)} ");
             sb.Append($"score H:{g.SuccessCount}/AI:{g.FailureCount} rejects:{g.ConsecutiveRejections}\n");
 
             if (g.ProposedTeamCount > 0)
@@ -310,6 +326,9 @@ Strategy heuristics (Avalon-standard, apply when relevant):
             var all = ctx.AllPlayers();
             int seenAi = 0;
             int seenOracleLabel = 0;
+            var confirmedAiNames = new List<string>();
+            var oracleLookingNames = new List<string>();
+            var unconfirmedNames = new List<string>();
             foreach (var p in all)
             {
                 bool isSelf = p == ctx.Self;
@@ -321,13 +340,48 @@ Strategy heuristics (Avalon-standard, apply when relevant):
                 sb.Append($"- id={p.PlayerId} name={GetName(ctx, p)} apparent_role={label}\n");
                 if (!isSelf)
                 {
-                    if (apparent == RoleType.AI) seenAi++;
-                    if (apparent == RoleType.Oracle) seenOracleLabel++;
+                    var name = GetName(ctx, p);
+                    if (apparent == RoleType.AI) { seenAi++; confirmedAiNames.Add(name); }
+                    else if (apparent == RoleType.Oracle) { seenOracleLabel++; oracleLookingNames.Add(name); }
+                    else { unconfirmedNames.Add(name); }
                 }
             }
             sb.Append("</players-you-see>\n\n");
 
+            AppendFactionBuckets(sb, ctx, confirmedAiNames, oracleLookingNames, unconfirmedNames);
             AppendRoleKnowledgeInference(sb, ctx, seenAi, seenOracleLabel);
+        }
+
+        /// <summary>
+        /// 各役職共通の「確定AI / Oracle候補ペア / 不確定プール」を構造化して提示。
+        /// LLM に "apparent=Operator が全員人類" と誤読させないため、不確定プールに何人 AI が
+        /// 隠れてるかを lineup math で先に計算して与える (Cipher / pre-awaken Drone 対策)。
+        /// </summary>
+        private static void AppendFactionBuckets(StringBuilder sb, CpuContext ctx,
+            List<string> confirmedAi, List<string> oracleLooking, List<string> unconfirmed)
+        {
+            var counts = ctx.Gsm.HostRoleCounts();
+            if (counts.Count == 0) return;
+            int totalAi = 0;
+            foreach (var kv in counts) if (kv.Key.IsAI()) totalAi += kv.Value;
+
+            int selfAi = ctx.SelfRole.IsAI() ? 1 : 0;
+            // oracleLooking のうち AI なのは MotherCore (1 人だけ); 残りは本物 Oracle
+            int aiInOraclePair = oracleLooking.Count > 0 ? 1 : 0;
+            int hiddenAi = totalAi - selfAi - confirmedAi.Count - aiInOraclePair;
+            if (hiddenAi < 0) hiddenAi = 0;
+            int unconfirmedHumans = unconfirmed.Count - hiddenAi;
+            if (unconfirmedHumans < 0) unconfirmedHumans = 0;
+
+            sb.Append("<faction-buckets> (math pre-computed; do not re-derive incorrectly)\n");
+            sb.Append($"- confirmed_ai = [{string.Join(",", confirmedAi)}]  ({confirmedAi.Count}; visible to you as AI)\n");
+            if (oracleLooking.Count > 0)
+                sb.Append($"- oracle_looking = [{string.Join(",", oracleLooking)}]  ({oracleLooking.Count}; exactly 1 is real Oracle + {oracleLooking.Count - 1} MotherCore — indistinguishable)\n");
+            sb.Append($"- unconfirmed = [{string.Join(",", unconfirmed)}]  ({unconfirmed.Count}; appear Operator but pool contains hidden roles)\n");
+            sb.Append($"- pool_breakdown: among unconfirmed, exactly {hiddenAi} are AI hidden + {unconfirmedHumans} are human. You CANNOT pinpoint which.\n");
+            if (hiddenAi == 0 && unconfirmed.Count > 0)
+                sb.Append("  · No AI hides among unconfirmed — every name in unconfirmed is human.\n");
+            sb.Append("</faction-buckets>\n\n");
         }
 
         /// <summary>
@@ -348,9 +402,9 @@ Strategy heuristics (Avalon-standard, apply when relevant):
             switch (ctx.SelfRole)
             {
                 case RoleType.Oracle:
-                    sb.Append($"- seen AI={seenAi} / lineup AI total={totalAi}.\n");
-                    if (cipherN > 0) sb.Append($"- CIPHER x{cipherN} is hidden from your sight (appears Operator).\n");
-                    if (droneN > 0) sb.Append($"- DRONE x{droneN} looks Operator until 2 hacks complete.\n");
+                    // 数値情報は <faction-buckets> で既に提示済み。ここは戦術指針だけ。
+                    if (cipherN > 0) sb.Append($"- CIPHER x{cipherN} is structurally invisible to your sight (always shows as Operator) — bucket math already accounts for this.\n");
+                    if (droneN > 0) sb.Append($"- DRONE x{droneN} appears Operator until 2 hacks complete, then becomes visible.\n");
                     sb.Append("- ROLE (Merlin analog): You are the #1 OVERRIDE target. Keep the role hidden; claiming it is almost always losing. Guide humans by pointing to votes/hack outcomes — never cite your sight. Equally, do NOT publicly label a fellow human (or the real Admin) with a role name — doing so is the same leak as self-claiming because AI will deduce you have sight. Save any claim for the pivotal moment (late round or confirmed-fail pressure) when evidence is already strong.\n");
                     break;
                 case RoleType.Admin:
@@ -375,6 +429,14 @@ Strategy heuristics (Avalon-standard, apply when relevant):
                         else sb.Append($"- DRONE x{droneN} hidden until 2 hacks complete (you can't see them yet).\n");
                     }
                     if (radicalN > 0) sb.Append($"- RADICAL x{radicalN} is a hidden human ally (looks Operator; do not out them).\n");
+                    // CIPHER の対 Oracle ステルス価値を AI 陣営全員 (MC/Agent/Cipher 自身も含む) に明示
+                    if (cipherN > 0)
+                    {
+                        sb.Append($"- TEAM ASSET: your CIPHER teammate(s) (x{cipherN}) are INVISIBLE to Oracle's sight (Oracle sees them as Operator). ")
+                          .Append("They are also invisible to Admin (appear Operator, not Oracle-looking). ")
+                          .Append("Use them as \"trusted\" infiltrators on hack teams — humans will rarely suspect them, so their NOISE strikes hard. ")
+                          .Append("Do NOT publicly mention CIPHER role; just behave as if they're regular Operators.\n");
+                    }
 
                     switch (ctx.SelfRole)
                     {
@@ -449,7 +511,7 @@ Strategy heuristics (Avalon-standard, apply when relevant):
             for (int i = 0; i < recs.Count; i++)
             {
                 var r = recs[i];
-                sb.Append($"- round={r.Round} leader={GetName(ctx, r.Leader)} team=[");
+                sb.Append($"- round={r.Round} proposer={GetName(ctx, r.Leader)} team=[");
                 for (int j = 0; j < r.Team.Count; j++)
                 {
                     if (j > 0) sb.Append(',');
@@ -473,7 +535,7 @@ Strategy heuristics (Avalon-standard, apply when relevant):
             for (int i = 0; i < recs.Count; i++)
             {
                 var r = recs[i];
-                sb.Append($"- round={r.Round} leader={GetName(ctx, r.Leader)} team=[");
+                sb.Append($"- round={r.Round} proposer={GetName(ctx, r.Leader)} team=[");
                 for (int j = 0; j < r.Team.Count; j++)
                 {
                     if (j > 0) sb.Append(',');
@@ -637,7 +699,7 @@ Strategy heuristics (Avalon-standard, apply when relevant):
             }
         }
 
-        private static string GetName(CpuContext ctx, PlayerRef pr)
+        public static string GetName(CpuContext ctx, PlayerRef pr)
         {
             if (ctx.Registry == null) return "#" + pr.PlayerId;
             int idx = ctx.Registry.FindIndex(pr);

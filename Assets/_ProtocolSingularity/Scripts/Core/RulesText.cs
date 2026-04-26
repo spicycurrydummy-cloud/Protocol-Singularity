@@ -29,8 +29,8 @@ namespace ProtocolSingularity.Core
 <color=#FF7878>RADICAL</color>     — AI に与する人類側の改革派。AI からは OPERATOR に映り互いに孤立。OVERRIDE 時に AI 陣営と相互可視化される
 
 <b>— ラウンドの流れ (全 3 ラウンド) —</b>
-1. リーダー選出 (順番)
-2. チーム提案 — リーダーがメンバーを指名
+1. 提案者選出 (順番)
+2. チーム提案 — 提案者がメンバーを指名
 3. 承認投票 — 全員が公開投票。賛成 > 反対で可決
 4. ハック実行 — メンバーが秘密裏に CLEAN / NOISE を提出
    ※ 人類と未覚醒 DRONE は CLEAN 固定

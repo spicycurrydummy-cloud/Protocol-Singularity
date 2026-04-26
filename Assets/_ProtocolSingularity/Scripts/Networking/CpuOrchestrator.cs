@@ -495,7 +495,8 @@ namespace ProtocolSingularity.Networking
                     Mercury2Prompts.BuildPostMatchReviewPrompt(ctx),
                     "PostMatchReview",
                     Mercury2Prompts.PostMatchReviewSchema,
-                    _cts.Token);
+                    _cts.Token,
+                    speakerLabel: $"{Mercury2Prompts.GetName(ctx, ctx.Self)}#{ctx.Self.PlayerId} [{role}]");
                 if (string.IsNullOrEmpty(json)) continue;
                 var comment = Mercury2CpuBrain.ExtractString(json, "comment");
                 if (string.IsNullOrEmpty(comment)) continue;

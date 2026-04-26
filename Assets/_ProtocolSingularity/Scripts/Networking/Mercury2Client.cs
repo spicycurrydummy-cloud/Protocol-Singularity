@@ -25,7 +25,8 @@ namespace ProtocolSingularity.Networking
             string schemaName,
             string jsonSchemaBody,
             CancellationToken ct,
-            float? temperatureOverride = null)
+            float? temperatureOverride = null,
+            string speakerLabel = null)
         {
             var cfg = Mercury2ConfigLoader.Current;
             if (cfg == null || !cfg.IsConfigured) return null;
@@ -43,7 +44,7 @@ namespace ProtocolSingularity.Networking
                 int idx = (startIdx + offset) % providers.Count;
                 if (ct.IsCancellationRequested) return null;
                 var provider = providers[idx];
-                var result = await TryOneAsync(provider, systemPrompt, userPrompt, schemaName, jsonSchemaBody, temp, ct);
+                var result = await TryOneAsync(provider, systemPrompt, userPrompt, schemaName, jsonSchemaBody, temp, ct, speakerLabel);
                 if (result.success)
                 {
                     _preferredProviderIndex = idx;
@@ -86,9 +87,9 @@ namespace ProtocolSingularity.Networking
         private static async Task<TryResult> TryOneAsync(
             Mercury2Provider provider,
             string systemPrompt, string userPrompt, string schemaName, string jsonSchemaBody,
-            float temperature, CancellationToken ct)
+            float temperature, CancellationToken ct, string speakerLabel = null)
         {
-            var r1 = await DoHttpAsync(provider, systemPrompt, userPrompt, schemaName, jsonSchemaBody, temperature, useJsonSchema: true, ct);
+            var r1 = await DoHttpAsync(provider, systemPrompt, userPrompt, schemaName, jsonSchemaBody, temperature, useJsonSchema: true, ct, speakerLabel);
             if (r1.success) return r1;
 
             // 「json_schema 非対応」系 (400 / 422) は同じプロバイダで json_object にして再試行。
@@ -104,7 +105,7 @@ namespace ProtocolSingularity.Networking
                 Debug.LogWarning($"[Mercury2] '{provider.name}' json_schema unsupported ({r1.code}); retrying with json_object mode.");
                 // schema hint を systemPrompt 末尾に追記して JSON 形を誘導
                 var extendedSystem = systemPrompt + "\n\nIMPORTANT: Return ONLY a single JSON object matching this schema (no markdown, no extra text):\n" + jsonSchemaBody;
-                var r2 = await DoHttpAsync(provider, extendedSystem, userPrompt, schemaName, jsonSchemaBody, temperature, useJsonSchema: false, ct);
+                var r2 = await DoHttpAsync(provider, extendedSystem, userPrompt, schemaName, jsonSchemaBody, temperature, useJsonSchema: false, ct, speakerLabel);
                 if (r2.success) return r2;
                 return r2;
             }
@@ -114,7 +115,7 @@ namespace ProtocolSingularity.Networking
         private static async Task<TryResult> DoHttpAsync(
             Mercury2Provider provider,
             string systemPrompt, string userPrompt, string schemaName, string jsonSchemaBody,
-            float temperature, bool useJsonSchema, CancellationToken ct)
+            float temperature, bool useJsonSchema, CancellationToken ct, string speakerLabel = null)
         {
             var url = provider.endpoint.TrimEnd('/') + "/chat/completions";
             var body = BuildRequestBody(provider.model, systemPrompt, userPrompt, schemaName, jsonSchemaBody, temperature, useJsonSchema);
@@ -156,17 +157,20 @@ namespace ProtocolSingularity.Networking
                 if (req.result != UnityWebRequest.Result.Success)
                 {
                     bool retriable = !(code == 401 || code == 403);
-                    Debug.LogWarning($"[Mercury2] '{provider.name}' HTTP {code} ({schemaName}, jsonSchema={useJsonSchema}): {req.error}\n body={respBody}");
+                    string spkErr = string.IsNullOrEmpty(speakerLabel) ? "" : $" [{speakerLabel}]";
+                    Debug.LogWarning($"[Mercury2]{spkErr} '{provider.name}' HTTP {code} ({schemaName}, jsonSchema={useJsonSchema}): {req.error}\n body={respBody}");
                     return new TryResult { success = false, retriable = retriable, code = code, body = respBody };
                 }
 
                 var content = ExtractContent(respBody);
                 if (string.IsNullOrEmpty(content))
                 {
-                    Debug.LogWarning($"[Mercury2] '{provider.name}' response had no extractable content ({schemaName}): {respBody}");
+                    string spkW = string.IsNullOrEmpty(speakerLabel) ? "" : $" [{speakerLabel}]";
+                    Debug.LogWarning($"[Mercury2]{spkW} '{provider.name}' response had no extractable content ({schemaName}): {respBody}");
                     return new TryResult { success = false, retriable = true, code = code, body = respBody };
                 }
-                Debug.Log($"[Mercury2:{provider.name}{(useJsonSchema?"":"/json_object")}] {schemaName} -> {content}");
+                string spk = string.IsNullOrEmpty(speakerLabel) ? "" : $" [{speakerLabel}]";
+                Debug.Log($"[Mercury2:{provider.name}{(useJsonSchema?"":"/json_object")}]{spk} {schemaName} -> {content}");
                 return new TryResult { success = true, content = content, code = code };
             }
             catch (Exception e)
